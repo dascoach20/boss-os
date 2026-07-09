@@ -1,0 +1,45 @@
+# ============================================================================
+# Boss OS - BUILD TỪ SOURCE (thay vì pull image GHCR).
+#   docker compose -f docker-compose.build.yml up -d --build
+# Dùng khi: tự host registry riêng, fork sửa code, hoặc test image trước khi đẩy.
+# ============================================================================
+services:
+  boss:
+    build:
+      context: .
+      args:
+        CLAUDE_CLI_VERSION: ${CLAUDE_CLI_VERSION:-latest}
+    image: ghcr.io/pham-dai-2000/boss-os:latest
+    container_name: boss
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      BOSS_HOST: 0.0.0.0
+      BOSS_PORT: "7777"
+      BOSS_REQUIRE_LOGIN: "1"
+      BOSS_STATE_DIR: /data/state
+      BRAIN_PATH: /data/brain
+      BRAINS_DIR: /brains
+      OBSIDIAN_VAULT_PATH: /data/vault
+      CLAUDE_CWD: /app
+    ports:
+      - "7777:7777"
+    volumes:
+      - boss-data:/data
+      - boss-brains:/brains      # đổi sang  ./brains:/brains  nếu muốn git-backup (chown -R 10001 ./brains)
+      - claude-auth:/home/boss/.claude
+      - codex-auth:/home/boss/.codex
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,os,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+os.getenv('BOSS_PORT','7777')+'/health',timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+volumes:
+  boss-data:
+  boss-brains:
+  claude-auth:
+  codex-auth:

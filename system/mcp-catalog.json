@@ -1,0 +1,556 @@
+{
+  "version": 1,
+  "_doc": "Kho connector MCP mẫu của Boss OS. Connector = MẪU (url/command + cách đăng nhập + phân loại tool). Tài khoản cụ thể user đấu = connection, lưu ở mcp_servers.json (xem server/mcp_store.py). status: ready | beta | soon. Đã xác minh chi tiết 2026-07-04 (research notes: docs/dev/2026-07-ke-hoach-ket-noi-hub.md).",
+  "connectors": [
+    {
+      "id": "pancake-pos",
+      "name": "Pancake POS",
+      "icon": "/static/logos/pancake-pos.png",
+      "category": "Bán hàng",
+      "description": "Đơn hàng, doanh thu, khách hàng, tồn kho, quảng cáo từ Pancake POS. Mỗi cửa hàng 1 API key - thêm nhiều tài khoản cho nhiều shop.",
+      "status": "ready",
+      "transport": "http",
+      "url": "https://mcp-pos.pancake.biz/mcp",
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "api_key",
+            "label": "API key của cửa hàng",
+            "placeholder": "dán API key Pancake POS...",
+            "header": "Authorization: Bearer {api_key}"
+          }
+        ],
+        "guide": "Mở Pancake POS > Cấu hình cửa hàng > Ứng dụng & API > tạo API key, rồi dán vào đây. Boss sẽ tự kiểm tra và lấy tên cửa hàng.",
+        "guide_url": "https://docs.pancake.biz/pos/st-f13/st-p2?lang=vi"
+      },
+      "validate": {
+        "tool": "pos_shop",
+        "args": { "action": "list" },
+        "label_paths": ["name", "shop.name", "data.name", "shops.0.name", "data.shops.0.name", "data.0.name"]
+      },
+      "arg_rules": {
+        "param": "action",
+        "read_prefixes": ["list", "get", "search", "describe", "count", "stat", "read", "history", "export"],
+        "read_values": [
+          "create_orders_get_tracking_url",
+          "create_products_get_logistics_shipping_document",
+          "create_orders_get_promotion_advance_active"
+        ]
+      },
+      "tool_meta": {
+        "read": ["pos_describe", "pos_statistics", "pos_statistics_inventory_analytics", "pos_export"],
+        "danger": ["pos_order", "pos_purchase", "pos_transaction", "pos_debt", "pos_e_invoice",
+                   "pos_ads_manager", "pos_voucher", "pos_promotion"]
+      },
+      "default_perm": "readonly"
+    },
+    {
+      "id": "zalo",
+      "name": "Zalo (tài khoản cá nhân)",
+      "icon": "/static/logos/zalo.png",
+      "category": "Nhắn tin",
+      "description": "Đọc và gửi tin nhắn Zalo bằng tài khoản cá nhân (qua zalo-agent-cli, đăng nhập quét QR). Nối được nhiều tài khoản - mỗi tài khoản chạy cô lập.",
+      "status": "beta",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "zalo-agent-cli", "mcp", "start"],
+      "requires": { "node": ">=20" },
+      "isolate_home": true,
+      "auth": {
+        "type": "qr",
+        "fields": [],
+        "guide": "Bấm Kết nối rồi quét mã QR bằng app Zalo trên điện thoại (Zalo > biểu tượng QR góc trên). Cần Node.js 20+ trên máy chạy Boss.",
+        "guide_url": "https://github.com/PhucMPham/zalo-agent-cli"
+      },
+      "tool_meta": {
+        "write": ["*send*", "*mark*"],
+        "danger": ["*send*"]
+      },
+      "default_perm": "full",
+      "risk": "Zalo KHÔNG hỗ trợ chính thức công cụ này (API không chính thức qua zca-js). Tài khoản của bạn CÓ THỂ bị Zalo hạn chế hoặc KHOÁ, nhất là khi gửi tin tự động số lượng lớn. Khuyến nghị dùng tài khoản phụ. Quyền GỬI TIN đang bật - Boss chỉ gửi khi bạn yêu cầu trực tiếp trong chat; loop chạy nền không bao giờ được tự gửi.",
+      "rate_limit": { "calls_per_min": 20 }
+    },
+    {
+      "id": "webcake-landing",
+      "name": "Webcake Landing",
+      "icon": "/static/logos/webcake.jpg",
+      "category": "Marketing",
+      "description": "Để AI tự thiết kế và sửa landing page Webcake bằng lời nói (tạo trang, sửa section, publish...). Chạy local qua npx, mỗi tài khoản 1 JWT.",
+      "status": "ready",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "webcake-landing-mcp"],
+      "requires": { "node": ">=18" },
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "api_key",
+            "label": "JWT / API key Webcake",
+            "placeholder": "dán JWT từ webcake.io...",
+            "env": "WEBCAKE_JWT"
+          },
+          {
+            "key": "org_id",
+            "label": "Org ID (tuỳ chọn - khi tài khoản có nhiều tổ chức)",
+            "placeholder": "để trống nếu chỉ có 1 tổ chức",
+            "env": "WEBCAKE_ORG_ID",
+            "optional": true
+          }
+        ],
+        "guide": "Vào webcake.io > Cài đặt > Mã truy cập > Tạo API keys (JWT), dán vào đây. Coi JWT như mật khẩu.",
+        "guide_url": "https://docs.pancake.biz/landing/st-f7/st-p3?lang=vi"
+      },
+      "validate": {
+        "tool": "list_organizations",
+        "args": {},
+        "label_paths": ["organizations.0.name", "data.0.name", "0.name", "name"]
+      },
+      "tool_meta": {
+        "write": ["create_page", "update_page", "patch_page", "add_section", "new_element", "new_page_skeleton", "layout", "ingest_html", "ingest_url", "upload_images"],
+        "danger": ["publish_page"]
+      },
+      "default_perm": "safe"
+    },
+    {
+      "id": "botcake",
+      "name": "Botcake",
+      "icon": "/static/logos/botcake.png",
+      "category": "Nhắn tin",
+      "description": "Khách hàng, tag, flow và gửi tin từ chatbot Botcake (qua Public API - Boss tự dựng cầu nối, không cần cài gì thêm).",
+      "status": "beta",
+      "transport": "internal",
+      "internal": "botcake",
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "page_id",
+            "label": "Page ID (trang Facebook gắn với Botcake)",
+            "placeholder": "vd 1021326246..."
+          },
+          {
+            "key": "api_key",
+            "label": "API Key của page",
+            "placeholder": "dán API key Botcake..."
+          }
+        ],
+        "guide": "Mở Botcake > Cấu hình > Tích hợp > Public API > Tạo API Key. Lưu ý: làm mới/xoá key sẽ vô hiệu các kết nối cũ.",
+        "guide_url": "https://docs.pancake.biz/botcake/st-f2/st-p10/st-s2?lang=vi"
+      },
+      "validate": {
+        "tool": "botcake_tags",
+        "args": {},
+        "label_paths": ["page.name", "data.page_name", "page_name", "name"]
+      },
+      "tool_meta": {
+        "write": ["botcake_send_flow", "botcake_send_content", "botcake_keyword_create", "botcake_keyword_update", "botcake_customer_fields_set", "botcake_upload_media"],
+        "danger": ["botcake_send_flow", "botcake_send_content"]
+      },
+      "default_perm": "readonly"
+    },
+    {
+      "id": "google-sheets",
+      "name": "Google Sheets",
+      "icon": "/static/logos/google-sheets.png",
+      "category": "Văn phòng",
+      "description": "Đọc/ghi bảng tính Google: đổ báo cáo doanh thu, tồn kho, công nợ ra Sheets tự động. Đấu bằng service account - không cần đăng nhập.",
+      "status": "beta",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["mcp-google-sheets@latest"],
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "service_account",
+            "label": "Service account JSON (dán TOÀN BỘ nội dung file key)",
+            "placeholder": "{ \"type\": \"service_account\", \"project_id\": ... }",
+            "file": true,
+            "env": "SERVICE_ACCOUNT_PATH",
+            "multiline": true
+          },
+          {
+            "key": "folder_id",
+            "label": "ID thư mục Drive làm việc (đã share cho email service account)",
+            "placeholder": "lấy từ URL thư mục, vd 1AbCdEf...",
+            "env": "DRIVE_FOLDER_ID"
+          }
+        ],
+        "guide": "Làm 1 lần: vào console.cloud.google.com > tạo project > bật Google Sheets API + Google Drive API > IAM > Service Accounts > tạo tài khoản + tạo key JSON. Share thư mục Drive cho email của service account (quyền Editor), rồi dán nội dung file JSON + ID thư mục vào đây. Thêm xong bấm Test để chắc chắn chạy.",
+        "guide_url": "https://github.com/xing5/mcp-google-sheets"
+      },
+      "tool_meta": {
+        "write": ["*create*", "*update*", "*add*", "*write*", "*batch*", "*share*", "*copy*"],
+        "danger": []
+      },
+      "default_perm": "safe"
+    },
+    {
+      "id": "google-search-console",
+      "name": "Google Search Console",
+      "icon": "🔍",
+      "category": "Marketing",
+      "description": "Số liệu SEO website: khách tìm từ khoá gì ra trang của bạn, lượt hiển thị, lượt bấm, trang top.",
+      "status": "beta",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-server-gsc"],
+      "requires": { "node": ">=18" },
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "service_account",
+            "label": "Service account JSON (dán TOÀN BỘ nội dung file key)",
+            "placeholder": "{ \"type\": \"service_account\", ... }",
+            "file": true,
+            "env": "GOOGLE_APPLICATION_CREDENTIALS",
+            "multiline": true
+          }
+        ],
+        "guide": "Tạo service account + key JSON trong Google Cloud Console (bật Search Console API), rồi vào Search Console > Cài đặt > Người dùng và quyền > thêm email của service account. Dán nội dung file JSON vào đây.",
+        "guide_url": "https://github.com/ahonn/mcp-server-gsc"
+      },
+      "default_perm": "readonly"
+    },
+    {
+      "id": "google-workspace",
+      "name": "Google Workspace (Gmail, Lịch, Drive, Docs)",
+      "icon": "📧",
+      "category": "Văn phòng",
+      "description": "Gmail, Calendar, Drive, Docs, Forms, Tasks... trong MỘT kết nối. Đăng nhập Google 1 lần bằng OAuth client tự tạo (~10 phút, có hướng dẫn).",
+      "status": "beta",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["workspace-mcp", "--tool-tier", "core"],
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "client_id",
+            "label": "OAuth Client ID",
+            "placeholder": "xxxx.apps.googleusercontent.com",
+            "env": "GOOGLE_OAUTH_CLIENT_ID"
+          },
+          {
+            "key": "client_secret",
+            "label": "OAuth Client Secret",
+            "placeholder": "GOCSPX-...",
+            "env": "GOOGLE_OAUTH_CLIENT_SECRET"
+          },
+          {
+            "key": "user_email",
+            "label": "Email Google của bạn (tuỳ chọn)",
+            "placeholder": "vd ten@gmail.com",
+            "env": "USER_GOOGLE_EMAIL",
+            "optional": true
+          }
+        ],
+        "guide": "Làm 1 lần (~10 phút): console.cloud.google.com > tạo project > bật Gmail API, Calendar API, Drive API, Docs API > OAuth consent screen (External, thêm email mình vào Test users) > Credentials > Create OAuth client ID (Desktop app) > copy Client ID + Secret vào đây. LẦN ĐẦU Boss gọi tool Google, trình duyệt trên máy chạy Boss sẽ mở để bạn bấm đồng ý quyền - làm trên máy có màn hình.",
+        "guide_url": "https://github.com/taylorwilsdon/google_workspace_mcp"
+      },
+      "tool_meta": {
+        "write": ["*create*", "*update*", "*upload*", "*draft*", "*modify*", "*move*", "*add*", "*set*"],
+        "danger": ["*send*", "*delete*"]
+      },
+      "default_perm": "safe",
+      "risk": "Mức Toàn quyền cho phép Boss GỬI EMAIL THẬT và XOÁ file/thư/lịch bằng tài khoản Google của bạn. Mức Ghi nháp (mặc định) chỉ soạn nháp, tạo lịch, tạo tài liệu - an toàn hơn."
+    },
+    {
+      "id": "meta-ads",
+      "name": "Meta Ads (Facebook & Instagram)",
+      "icon": "/static/logos/meta-ads.webp",
+      "category": "Quảng cáo",
+      "description": "Quảng cáo Facebook/Instagram qua MCP chính chủ của Meta: tài khoản ads, hiệu suất chiến dịch, benchmark ngành, catalog sản phẩm. Đăng nhập Facebook 1 chạm - không cần tạo app hay dán key.",
+      "status": "beta",
+      "transport": "http",
+      "url": "https://mcp.facebook.com/ads",
+      "auth": {
+        "type": "oauth",
+        "fields": [],
+        "guide": "Bấm Kết nối rồi đăng nhập Facebook và cấp quyền cho tài khoản quảng cáo (tài khoản phải thuộc Business Manager). Khi Meta hỏi mức quyền, chọn mức CHỈ XEM nếu chỉ cần báo cáo. Meta đang mở beta dần theo từng tài khoản - nếu đăng nhập bị từ chối nghĩa là tài khoản của bạn chưa được mở, thử lại sau.",
+        "guide_url": "https://www.facebook.com/business/help/1456422242197840"
+      },
+      "validate": {
+        "tool": "ads_get_ad_accounts",
+        "args": {},
+        "label_paths": ["data.0.name", "adaccounts.data.0.name", "ad_accounts.0.name", "accounts.0.name", "0.name", "name"]
+      },
+      "tool_meta": {
+        "read": ["ads_get_*", "ads_insights_*", "ads_catalog_get_*"],
+        "write": ["ads_catalog_*"],
+        "danger": ["ads_create_*", "ads_update_entity", "ads_activate_entity"]
+      },
+      "default_perm": "readonly",
+      "risk": "Mức Toàn quyền cho phép Boss tạo/sửa chiến dịch quảng cáo tiêu TIỀN THẬT trên tài khoản của bạn (chiến dịch tạo qua đây luôn ở trạng thái TẠM DỪNG, bạn phải tự bật trong Ads Manager). Chỉ cần xem số liệu thì giữ mức Chỉ đọc."
+    },
+    {
+      "id": "google-ads",
+      "name": "Google Ads",
+      "icon": "🎯",
+      "category": "Quảng cáo",
+      "description": "Số liệu Google Ads qua MCP chính chủ của Google (chỉ đọc): chiến dịch, chi phí, chuyển đổi, từ khoá qua truy vấn GAQL. Chạy local; cần developer token + Google Cloud, cài 1 lần hơi kỹ thuật.",
+      "status": "beta",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/googleads/google-ads-mcp.git", "google-ads-mcp"],
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "developer_token",
+            "label": "Developer token (Google Ads API Center)",
+            "placeholder": "chuỗi 22 ký tự, lấy ở tài khoản quản lý MCC",
+            "env": "GOOGLE_ADS_DEVELOPER_TOKEN"
+          },
+          {
+            "key": "project_id",
+            "label": "Google Cloud Project ID",
+            "placeholder": "vd my-ads-project",
+            "env": "GOOGLE_PROJECT_ID"
+          },
+          {
+            "key": "adc_json",
+            "label": "Nội dung file đăng nhập ADC (application_default_credentials.json)",
+            "placeholder": "{ \"client_id\": ..., \"refresh_token\": ... }",
+            "file": true,
+            "env": "GOOGLE_APPLICATION_CREDENTIALS",
+            "multiline": true
+          },
+          {
+            "key": "login_customer_id",
+            "label": "ID tài khoản quản lý MCC (tuỳ chọn - khi tài khoản ads nằm dưới MCC/agency)",
+            "placeholder": "10 số, bỏ dấu gạch",
+            "env": "GOOGLE_ADS_LOGIN_CUSTOMER_ID",
+            "optional": true
+          }
+        ],
+        "guide": "Cần cài uv (winget install astral-sh.uv), Git và Google Cloud CLI (gcloud). Làm 1 lần: (1) Google Ads > tài khoản quản lý MCC > Công cụ > API Center: lấy developer token (mức Explorer đủ để đọc). (2) console.cloud.google.com: tạo project, bật Google Ads API, tạo OAuth client (Desktop app) và tải file JSON của client. (3) Chạy: gcloud auth application-default login --scopes=https://www.googleapis.com/auth/adwords,https://www.googleapis.com/auth/cloud-platform --client-id-file=<file JSON vừa tải> rồi đăng nhập Google. (4) Dán TOÀN BỘ nội dung file nó tạo ra (Windows: %APPDATA%\\gcloud\\application_default_credentials.json) vào ô trên. Lần kết nối đầu tải gói, có thể mất 1-2 phút.",
+        "guide_url": "https://developers.google.com/google-ads/api/docs/developer-toolkit/mcp-server?hl=vi"
+      },
+      "validate": {
+        "tool": "customers_list_accessible_customers",
+        "args": {}
+      },
+      "tool_meta": {
+        "read": ["customers_*", "metadata_*", "search_*"]
+      },
+      "default_perm": "readonly"
+    },
+    {
+      "id": "tiktok-ads",
+      "name": "TikTok Ads",
+      "icon": "🎵",
+      "category": "Quảng cáo",
+      "description": "Số liệu quảng cáo TikTok (chỉ đọc): tài khoản, chiến dịch, nhóm quảng cáo, creative, báo cáo hiệu suất. Server cộng đồng chạy local trên Marketing API chính thức - dán App ID + Secret + Access Token.",
+      "status": "beta",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["tiktok-ads-mcp"],
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "app_id",
+            "label": "App ID (TikTok for Business Developers)",
+            "placeholder": "vd 7123456789...",
+            "env": "TIKTOK_APP_ID"
+          },
+          {
+            "key": "app_secret",
+            "label": "App Secret",
+            "placeholder": "dán secret của app...",
+            "env": "TIKTOK_SECRET"
+          },
+          {
+            "key": "access_token",
+            "label": "Access Token (long-term)",
+            "placeholder": "dán access token đã authorize với tài khoản ads...",
+            "env": "TIKTOK_ACCESS_TOKEN"
+          }
+        ],
+        "guide": "Cần cài uv (winget install astral-sh.uv). Làm 1 lần: vào business-api.tiktok.com > My Apps > tạo app loại Marketing API với quyền đọc Ads Management + Reporting; duyệt xong lấy App ID + Secret, rồi authorize app với tài khoản quảng cáo của bạn để lấy long-term Access Token (token Marketing API không tự hết hạn). Chi tiết từng bước xem link hướng dẫn.",
+        "guide_url": "https://github.com/ysntony/tiktok-ads-mcp#readme"
+      },
+      "validate": {
+        "tool": "get_authorized_ad_accounts_tool",
+        "args": {},
+        "label_paths": ["data.list.0.advertiser_name", "list.0.advertiser_name", "0.advertiser_name", "advertiser_name"]
+      },
+      "tool_meta": {
+        "read": ["get_*"]
+      },
+      "default_perm": "readonly"
+    },
+    {
+      "id": "google-calendar",
+      "name": "Google Calendar",
+      "icon": "/static/logos/google-calendar.png",
+      "category": "Văn phòng",
+      "description": "Lịch Google qua MCP chính chủ của Google: xem lịch, tìm chỗ trống, tạo/sửa sự kiện, nhắc hẹn. Đăng nhập Google trong dashboard, chạy được cả trên VPS. Cần tạo OAuth client 1 lần (~10 phút).",
+      "status": "beta",
+      "transport": "http",
+      "url": "https://calendarmcp.googleapis.com/mcp/v1",
+      "auth": {
+        "type": "oauth",
+        "provider": "google",
+        "authorize_url": "https://accounts.google.com/o/oauth2/v2/auth",
+        "token_url": "https://oauth2.googleapis.com/token",
+        "scopes": ["openid", "email", "https://www.googleapis.com/auth/calendar"],
+        "authorize_params": { "access_type": "offline", "prompt": "consent", "include_granted_scopes": "true" },
+        "fields": [
+          { "key": "client_id", "label": "OAuth Client ID", "placeholder": "xxxx.apps.googleusercontent.com" },
+          { "key": "client_secret", "label": "OAuth Client Secret", "placeholder": "GOCSPX-..." }
+        ],
+        "guide": "Làm 1 lần (~10 phút): console.cloud.google.com > tạo project > bật Google Calendar API > Màn hình đồng ý OAuth (chọn External, thêm email của bạn vào Test users) > Thông tin xác thực > Tạo OAuth client ID loại 'Ứng dụng web'. Ở phần 'URI chuyển hướng được ủy quyền', thêm đúng địa chỉ này: http://localhost:7777/connect/oauth/callback (nếu chạy trên VPS thì thêm cả https://<tên-miền>/connect/oauth/callback). Copy Client ID + Client Secret dán vào đây rồi bấm Kết nối - trình duyệt sẽ mở để bạn đăng nhập Google và bấm đồng ý (gặp cảnh báo 'ứng dụng chưa được xác minh' thì bấm Nâng cao > Tiếp tục, vì đây là app của chính bạn).",
+        "guide_url": "https://console.cloud.google.com/apis/credentials"
+      },
+      "validate": {
+        "tool": "list_calendars",
+        "args": {},
+        "label_paths": ["calendars.0.id", "items.0.id", "data.0.id", "0.id", "primary.id"]
+      },
+      "tool_meta": {
+        "read": ["list_events", "get_event", "list_calendars", "suggest_time"],
+        "write": ["create_event", "update_event", "respond_to_event"],
+        "danger": ["delete_event"]
+      },
+      "default_perm": "readonly",
+      "risk": "Mức Ghi nháp cho phép Boss TẠO và SỬA sự kiện thật trên lịch của bạn (tiện để nhờ 'nhắc tôi gọi nhà cung cấp thứ 5'). Mức Toàn quyền thêm quyền XOÁ sự kiện. Chỉ cần xem lịch thì giữ mức Chỉ đọc."
+    },
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "icon": "/static/logos/gmail.webp",
+      "category": "Văn phòng",
+      "description": "Gmail qua MCP chính chủ của Google: đọc và tìm thư, soạn NHÁP, gắn nhãn sắp xếp hộp thư. Server chính chủ KHÔNG có tool gửi thẳng - luôn dừng ở bản nháp để bạn tự bấm gửi. Cần tạo OAuth client 1 lần.",
+      "status": "beta",
+      "transport": "http",
+      "url": "https://gmailmcp.googleapis.com/mcp/v1",
+      "auth": {
+        "type": "oauth",
+        "provider": "google",
+        "authorize_url": "https://accounts.google.com/o/oauth2/v2/auth",
+        "token_url": "https://oauth2.googleapis.com/token",
+        "scopes": ["openid", "email", "https://www.googleapis.com/auth/gmail.modify"],
+        "authorize_params": { "access_type": "offline", "prompt": "consent", "include_granted_scopes": "true" },
+        "fields": [
+          { "key": "client_id", "label": "OAuth Client ID", "placeholder": "xxxx.apps.googleusercontent.com" },
+          { "key": "client_secret", "label": "OAuth Client Secret", "placeholder": "GOCSPX-..." }
+        ],
+        "guide": "Làm 1 lần (~10 phút): console.cloud.google.com > tạo project > bật Gmail API > Màn hình đồng ý OAuth (chọn External, thêm email của bạn vào Test users) > Thông tin xác thực > Tạo OAuth client ID loại 'Ứng dụng web'. Ở phần 'URI chuyển hướng được ủy quyền', thêm đúng địa chỉ này: http://localhost:7777/connect/oauth/callback (nếu chạy trên VPS thì thêm cả https://<tên-miền>/connect/oauth/callback). Copy Client ID + Client Secret dán vào đây rồi bấm Kết nối - trình duyệt sẽ mở để bạn đăng nhập Google và bấm đồng ý (gặp cảnh báo 'ứng dụng chưa được xác minh' thì bấm Nâng cao > Tiếp tục, vì đây là app của chính bạn). Có thể dùng CHUNG một OAuth client với Google Calendar - chỉ cần bật thêm Gmail API.",
+        "guide_url": "https://console.cloud.google.com/apis/credentials"
+      },
+      "validate": {
+        "tool": "list_labels",
+        "args": {}
+      },
+      "tool_meta": {
+        "read": ["list_drafts", "get_thread", "search_threads", "list_labels"],
+        "write": ["create_draft", "create_label", "*label*"],
+        "danger": []
+      },
+      "default_perm": "readonly",
+      "risk": "Mức Ghi nháp cho phép Boss SOẠN NHÁP thư và gắn/gỡ nhãn trong hộp thư của bạn. Server Gmail chính chủ không có tool gửi thẳng nên Boss không tự gửi được - luôn dừng ở bản nháp để bạn tự bấm gửi. Chỉ cần đọc/tìm thư thì giữ mức Chỉ đọc."
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "icon": "/static/logos/slack.webp",
+      "category": "Nhắn tin",
+      "description": "Tìm kiếm và đọc/gửi tin nhắn Slack, xem kênh và thành viên, quản lý canvas qua MCP chính chủ của Slack. Cần tạo một Slack app trong workspace và được admin duyệt (đây là yêu cầu bắt buộc của Slack).",
+      "status": "beta",
+      "transport": "http",
+      "url": "https://mcp.slack.com/mcp",
+      "auth": {
+        "type": "oauth",
+        "provider": "slack",
+        "authorize_url": "https://slack.com/oauth/v2_user/authorize",
+        "token_url": "https://slack.com/api/oauth.v2.user.access",
+        "scope_param": "user_scope",
+        "scope_sep": ",",
+        "scopes": ["openid", "email", "profile", "search:read.public", "channels:read", "channels:history", "groups:read", "users:read", "chat:write", "canvases:read"],
+        "fields": [
+          { "key": "client_id", "label": "Client ID (từ Slack app)", "placeholder": "1234567890.1234567890" },
+          { "key": "client_secret", "label": "Client Secret", "placeholder": "dán client secret của app..." }
+        ],
+        "guide": "Slack yêu cầu MCP đi qua một app của chính bạn (không cho tự đăng ký). Làm 1 lần: vào api.slack.com/apps > Create New App (from scratch) trong workspace của bạn > OAuth & Permissions: thêm 'Redirect URL' đúng địa chỉ http://localhost:7777/connect/oauth/callback (VPS thì thêm https://<tên-miền>/connect/oauth/callback) và thêm các 'User Token Scopes' khớp với quyền (search:read.public, channels:read, channels:history, users:read, chat:write, canvases:read...). Ở Basic Information copy Client ID + Client Secret dán vào đây. Nếu workspace yêu cầu admin duyệt app thì cần admin chấp thuận. Bấm Kết nối để đăng nhập Slack và cấp quyền.",
+        "guide_url": "https://docs.slack.dev/ai/slack-mcp-server/"
+      },
+      "tool_meta": {
+        "danger": ["*send*", "*post*", "*add_message*", "*create*", "*update*", "*archive*", "*upload*", "*invite*"]
+      },
+      "default_perm": "readonly",
+      "risk": "Mức Toàn quyền cho phép Boss GỬI TIN NHẮN THẬT và tạo/sửa canvas bằng tài khoản Slack của bạn. Chỉ cần đọc/tìm tin thì giữ mức Chỉ đọc. Lưu ý: tên tool chính xác của Slack MCP chưa công bố nên phân loại quyền dựa trên heuristic (mọi tool có động từ hành động bị coi là GHI và chặn ở mức Chỉ đọc); nếu một công cụ đọc bị chặn nhầm, nâng quyền hoặc báo lại để chỉnh."
+    },
+    {
+      "id": "systeme-io",
+      "name": "Systeme.io",
+      "icon": "/static/logos/systeme-io.png",
+      "category": "Marketing",
+      "description": "Quản lý liên hệ, tag, trường tuỳ biến, newsletter và phễu từ Systeme.io qua MCP chính chủ. Dán MCP key là xong (key có hạn tối đa 90 ngày, tối đa 2 key mỗi tài khoản).",
+      "status": "beta",
+      "transport": "http",
+      "url": "https://mcp.systeme.io/mcp",
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "mcp_key",
+            "label": "MCP key",
+            "placeholder": "dán MCP key từ Systeme.io...",
+            "header": "X-MCP-Key: {mcp_key}"
+          }
+        ],
+        "guide": "Vào systeme.io > Cài đặt hồ sơ > 'MCP & API keys' (menu trái) > kéo xuống mục MCP keys > Create > đặt tên + hạn dùng (tối đa 90 ngày) > lưu và copy key dán vào đây. Mỗi tài khoản tối đa 2 MCP key; key hết hạn thì tạo key mới và cập nhật lại.",
+        "guide_url": "https://help.systeme.io/article/9489-how-to-use-systeme-ios-mcp"
+      },
+      "tool_meta": {
+        "write": ["create_*", "update_*", "assign_*", "set_*", "add_*", "remove_*", "*_assign", "*_remove"],
+        "danger": ["delete_*", "*_delete"]
+      },
+      "default_perm": "readonly",
+      "risk": "Mức Ghi nháp cho phép Boss TẠO/SỬA liên hệ, tag, newsletter, phễu thật trên Systeme.io. Mức Toàn quyền thêm quyền XOÁ. Chỉ cần xem dữ liệu thì giữ mức Chỉ đọc. Lưu ý: tên tool chính xác chưa công bố nên phân loại dựa trên heuristic (tool có động từ hành động bị coi là GHI, xoá là NGUY HIỂM); nếu công cụ đọc bị chặn nhầm ở mức Chỉ đọc, báo lại để chỉnh."
+    },
+    {
+      "id": "lark",
+      "name": "Lark",
+      "icon": "/static/logos/lark.png",
+      "category": "Văn phòng",
+      "description": "Nhắn tin, tài liệu (Docs), bảng dữ liệu (Base/Bitable), wiki và danh bạ trong Lark qua MCP chính chủ. Chạy local bằng app của bạn (dán App ID + App Secret). Cần tạo một Lark app và cấp quyền tương ứng.",
+      "status": "beta",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@larksuiteoapi/lark-mcp", "mcp", "-d", "https://open.larksuite.com"],
+      "requires": { "node": ">=18" },
+      "auth": {
+        "type": "apikey",
+        "fields": [
+          {
+            "key": "app_id",
+            "label": "App ID (Lark app)",
+            "placeholder": "cli_xxxxxxxxxxxx",
+            "env": "APP_ID"
+          },
+          {
+            "key": "app_secret",
+            "label": "App Secret",
+            "placeholder": "dán app secret...",
+            "env": "APP_SECRET"
+          }
+        ],
+        "guide": "Cần Node.js 18+ trên máy chạy Boss. Làm 1 lần: vào open.larksuite.com/app > Create custom app > ở 'Credentials & Basic Info' lấy App ID + App Secret. Vào 'Permissions & Scopes' cấp các quyền cần dùng (vd im:message, im:chat, docx:document, bitable:app, contact:user.id) rồi 'Create version' để phát hành app (có thể cần admin duyệt). Dán App ID + App Secret vào đây. Boss chỉ đọc/làm được đúng những quyền bạn đã cấp cho app.",
+        "guide_url": "https://open.larksuite.com/document/uAjLw4CM/ukTMukTMukTM/mcp_integration/mcp_introduction"
+      },
+      "tool_meta": {
+        "read": ["*_list", "*_search", "*_get", "*batchGetId", "*rawContent", "*getNode"],
+        "write": ["*_create", "*_update", "docx_builtin_import"],
+        "danger": ["im_v1_message_create", "drive_v1_permissionMember_create"]
+      },
+      "default_perm": "readonly",
+      "risk": "Mức Ghi nháp cho phép Boss TẠO/SỬA bảng dữ liệu, tài liệu, nhóm chat thật trong Lark. Mức Toàn quyền thêm quyền GỬI TIN NHẮN vào chat và CẤP QUYỀN truy cập file. Chỉ cần xem/tìm thì giữ mức Chỉ đọc. Boss chỉ làm được đúng phạm vi quyền bạn cấp cho Lark app."
+    }
+  ]
+}

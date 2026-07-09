@@ -1,0 +1,94 @@
+# ============================================================================
+# Boss OS - HOSTINGER VPS (Docker Manager). Tên miền + HTTPS qua Traefik có sẵn của Hostinger.
+#
+# File này LUÔN deploy được:
+#   - Chưa đặt DOMAIN_NAME  -> chạy tạm, vào bằng nút Open / http://<ip>:7777 (chưa có HTTPS).
+#   - Đặt DOMAIN_NAME       -> Traefik của Hostinger tự cấp HTTPS cho tên miền đó.
+#
+# CÁCH DÙNG:
+#   1) Docker Manager > Compose > URL > dán:
+#      https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.hostinger.yml
+#   2) Ô Environment (Biến môi trường) đặt DOMAIN_NAME (để có HTTPS):
+#        - Link miễn phí (KHÔNG cần mua tên miền):  DOMAIN_NAME=boss.<hostname-vps>.hstgr.cloud
+#          (hostname xem ở hPanel > VPS, vd: DOMAIN_NAME=boss.srv1782015.hstgr.cloud)
+#        - Hoặc tên miền riêng:  DOMAIN_NAME=tenmien.com  (trỏ DNS A về IP VPS trước).
+#   3) Deploy > đợi 1-3 phút Traefik cấp SSL > mở  https://<DOMAIN_NAME>.
+#
+# KHÔNG tìm thấy ô Environment? Bấm Manage > sửa .yaml, đổi thẳng dòng Host(...) thành tên miền:
+#      Host(`boss.srv1782015.hstgr.cloud`)   (thay bằng hostname VPS của bạn).
+#
+# GHI CHÚ:
+#   - Mấu chốt (rút từ compose thật của Hermes): KHÔNG khai báo networks - Traefik tự thấy container qua nhãn.
+#   - Cập nhật bản mới: Redeploy trong Docker Manager (image :latest + pull_policy: always).
+#   - VPS KHÔNG phải Hostinger: bỏ file này, dùng docker-compose.yml + docker-compose.https.yml (Caddy).
+#   - Image GHCR phải để PUBLIC (GitHub > Packages > boss-os > Package settings > Public).
+# ============================================================================
+services:
+  boss:
+    image: ghcr.io/pham-dai-2000/boss-os:latest
+    container_name: boss
+    restart: unless-stopped
+    pull_policy: always
+    environment:
+      BOSS_HOST: 0.0.0.0
+      BOSS_PORT: "7777"
+      BOSS_REQUIRE_LOGIN: "1"     # ÉP đăng nhập/đăng ký khi mở app (public)
+      # Tạo sẵn admin lúc deploy (đặt 2 biến này ở ô Environment của Hostinger) → mở app đăng nhập luôn, KHỎI cần mã thiết lập
+      BOSS_ADMIN_USER: ${BOSS_ADMIN_USER:-}
+      BOSS_ADMIN_PASSWORD: ${BOSS_ADMIN_PASSWORD:-}
+      BOSS_STATE_DIR: /data/state
+      BRAIN_PATH: /data/brain
+      BRAINS_DIR: /brains
+      OBSIDIAN_VAULT_PATH: /data/vault
+      CLAUDE_CWD: /app
+      WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN:-boss-update}   # để nút "Cập nhật ngay" trong app gọi được Watchtower
+    ports:
+      - "18777:7777"                 # đường vào dự phòng (nút Open / http://<ip>:7777)
+    labels:
+      # Guide (Documentation / Quick start) trong Docker Manager - trỏ docs GitHub.
+      - org.opencontainers.image.documentation=https://github.com/pham-dai-2000/boss-os/blob/main/docs/README.md
+      - org.opencontainers.image.source=https://github.com/pham-dai-2000/boss-os
+      - com.hostinger.documentation=https://github.com/pham-dai-2000/boss-os/blob/main/docs/README.md
+      - com.hostinger.quickstart=https://github.com/pham-dai-2000/boss-os/blob/main/QUICKSTART.md
+      # Tên router/service = ${COMPOSE_PROJECT_NAME} → chạy nhiều bản trên cùng VPS không đụng nhau.
+      # Host = ${DOMAIN_NAME}; chưa đặt thì mặc định "localhost" (deploy vẫn chạy, chỉ chưa có domain/HTTPS).
+      - traefik.enable=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-boss}.rule=Host(`${DOMAIN_NAME:-localhost}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-boss}.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-boss}.tls.certresolver=letsencrypt
+      - traefik.http.services.${COMPOSE_PROJECT_NAME:-boss}.loadbalancer.server.port=7777
+    volumes:
+      - boss-data:/data
+      - boss-brains:/brains
+      - claude-auth:/home/boss/.claude
+      - codex-auth:/home/boss/.codex
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,os,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+os.getenv('BOSS_PORT','7777')+'/health',timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  # Watchtower: để nút "⬆ Cập nhật ngay" trong app hoạt động (kéo image mới + dựng lại container 'boss').
+  # Chỉ update khi app GỌI (HTTP trigger + token), KHÔNG tự polling. Cần Docker socket (quyền điều khiển Docker).
+  # Nếu Hostinger CHẶN socket → service này "Partially running", nút không hiện → app tự quay về cách Redeploy (không sao).
+  watchtower:
+    image: containrrr/watchtower
+    container_name: boss-watchtower
+    restart: unless-stopped
+    depends_on:
+      - boss
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DOCKER_API_VERSION: "1.40"                            # ép dùng API 1.40 (Docker VPS mới không nhận 1.25 mặc định)
+      WATCHTOWER_HTTP_API_UPDATE: "true"                    # chỉ cập nhật khi có HTTP trigger từ app
+      WATCHTOWER_HTTP_API_TOKEN: ${WATCHTOWER_TOKEN:-boss-update}
+      WATCHTOWER_CLEANUP: "true"                            # dọn image cũ sau khi update
+    command: boss                                           # chỉ theo dõi/cập nhật container 'boss'
+
+volumes:
+  boss-data:
+  boss-brains:
+  claude-auth:
+  codex-auth:

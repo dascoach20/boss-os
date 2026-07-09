@@ -1,0 +1,34 @@
+# Keep build context small + never bake secrets/state into the image.
+# LƯU Ý: KHÔNG loại .claude/skills và system/ - đó là TẦNG HỆ THỐNG (skill/loop mặc định)
+# phải nằm trong image để update theo phiên bản.
+.git
+.venv
+.claude/worktrees/
+.claude/settings.local.json
+**/.claude/skills/.disabled/
+**/__pycache__
+*.pyc
+*.pyo
+.env
+.env.*
+# env.example (không chấm đầu) không khớp pattern trên nên vẫn vào image - khỏi cần negation
+.learn/
+.staging/
+Brain Default/
+brain/
+brains/
+vault/
+server/settings.json
+server/.sessions.json
+server/.mcp_config.json
+server/mcp_servers.json
+server/loop_config.json
+server/conversations.db
+server/conversations.db-wal
+server/conversations.db-shm
+server/boss.log
+*.log
+*.mp3
+.DS_Store
+Thumbs.db
+desktop.ini

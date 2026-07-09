@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boss OS</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=104">
+  <link rel="apple-touch-icon" href="/static/logo.png?v=105">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/static/style.css?v=150">
+  <link rel="stylesheet" href="/static/console.css?v=123">
+</head>
+<body>
+  <div class="hud">
+
+    <!-- ===== TOP BAR ===== -->
+    <header class="hud-top">
+      <div class="brand"><span class="brand-icon"><img src="/brand-logo" alt="" style="width:22px;height:22px;border-radius:5px;vertical-align:middle;object-fit:cover"></span> <span class="brand-text">Boss OS</span></div>
+      <!-- Select Brain: dời từ góc graph lên navbar (trái) -->
+      <div class="orb-graph-ctl navbar-brain">
+        <select id="graphSource" class="graph-select">
+          <option value="brain">Brain Default</option>
+        </select>
+        <button class="graph-folder-btn" id="newBrainBtn" title="Tạo brain mới trong thư mục brains">➕</button>
+        <button class="graph-folder-btn" id="delBrainBtn" title="Xoá brain đang chọn (xác nhận gõ đúng tên)">🗑</button>
+        <button class="graph-folder-btn" id="pickFolderBtn" title="Chọn brain từ folder ngoài bất kỳ">📁</button>
+        <span class="graph-stats" id="graphStats">-</span>
+      </div>
+      <div class="hud-center-title">
+        <span class="ws-name" id="workspaceName">Boss OS</span>
+        <span class="ws-date" id="currentDate"></span>
+      </div>
+      <div class="hud-actions">
+        <button class="studio-open-btn" id="studioOpenBtn" title="Studio - Agents, Skills, Workflows">▦ Studio</button>
+        <button class="hud-icon-btn" id="settingsBtn" title="Cài đặt">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+            <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+            <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+          </svg>
+        </button>
+        <!-- Voice/tốc độ đã dời xuống sidebar phải (mục CÀI ĐẶT NHANH). -->
+        <button class="hud-icon-btn" id="ttsToggle" title="Bật/tắt giọng Boss OS">
+          <svg class="tts-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+          <svg class="tts-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+            <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+          </svg>
+        </button>
+        <button class="hud-icon-btn" id="resetBtn" title="Reset hội thoại">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.7 3M3 4v5h5"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===== BODY: 3 columns ===== -->
+    <div class="hud-body">
+
+      <!-- LEFT: metrics (fix cứng - luôn hiện, không thu/mở) -->
+      <aside class="hud-left">
+        <div class="panel-label">
+          SỐ LIỆU KINH DOANH
+          <button class="mini-btn" id="refreshMetrics" title="Cập nhật">⟳</button>
+        </div>
+        <div class="metric-cards" id="metricCards"></div>
+        <div class="metric-status" id="metricStatus"></div>
+      </aside>
+
+      <!-- CENTER: 3D orb -->
+      <div class="hud-center">
+        <canvas id="starfield"></canvas>
+        <div id="graph3dContainer"></div>
+        <div class="concept-labels" id="conceptLabels"></div>
+        <div class="orb-overlay">
+          <div class="orb-state" id="orbState">SẴN SÀNG</div>
+          <div class="orb-interim" id="voiceInterim"></div>
+        </div>
+        <div class="graph-tooltip" id="graphTooltip"></div>
+
+        <!-- Lớp Agentic: số agent / skill / workflow - bấm mở Studio -->
+        <div class="brain-stats" id="brainStats">
+          <button class="bstat" data-tab="agents" title="Mở Studio · Agents">
+            <span class="bstat-num" id="statAgents">-</span>
+            <span class="bstat-lbl">AGENTS</span>
+          </button>
+          <span class="bstat-sep"></span>
+          <button class="bstat" data-tab="skills" title="Mở Studio · Skills">
+            <span class="bstat-num" id="statSkills">-</span>
+            <span class="bstat-lbl">SKILLS</span>
+          </button>
+          <span class="bstat-sep"></span>
+          <button class="bstat" data-tab="workflows" title="Mở Studio · Workflows">
+            <span class="bstat-num" id="statWorkflows">-</span>
+            <span class="bstat-lbl">WORKFLOWS</span>
+          </button>
+          <span class="bstat-sep"></span>
+          <button class="bstat" data-tab="automations" title="Mở Studio · Lịch tự động (routines đang chạy)">
+            <span class="bstat-num" id="statRoutines">-</span>
+            <span class="bstat-lbl">ROUTINES</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT: transcript + activity -->
+      <aside class="hud-right">
+        <div class="panel-label">
+          <span>HỘI THOẠI</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <span class="engine-badge" id="engineBadge" title="Engine + model THẬT đang chạy (lấy từ server - không phải tên model tự nhận)">-</span>
+            <button class="mini-btn" id="chatZoomBtn" title="Phóng to khung chat (Esc để thu nhỏ)">⛶</button>
+          </span>
+        </div>
+        <hr class="chat-sep">
+        <div class="transcript" id="chatArea"></div>
+
+        <!-- Attachment chips (chip file đính kèm) -->
+        <div class="attach-bar" id="attachBar"></div>
+        <!-- ===== Ô nhập chat (dời từ đáy full-width về khối chat bên phải) ===== -->
+        <div class="hud-voice" id="hudVoice">
+          <button class="mic-big" id="voiceBtn" title="Bấm để nói (hoặc giữ Space)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+            </svg>
+          </button>
+          <button class="attach-btn" id="attachBtn" title="Đính kèm file (ảnh, text, tài liệu) → lưu vào Sources">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <input type="file" id="fileInput" multiple style="display:none">
+          <textarea id="chatInput" class="voice-input" placeholder="Nói hoặc gõ cho Boss OS…" rows="1"></textarea>
+          <button class="stop-btn" id="stopBtn" title="Ngắt lệnh / dừng đọc (Esc)" style="display:none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          </button>
+          <button class="send-btn" id="sendBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+          </button>
+        </div>
+        <!-- Thanh #toolBar cũ ĐÃ BỎ: trạng thái "đang suy nghĩ / gọi tool" giờ hiện bằng
+             chip hoạt động NGAY TRONG #chatArea (app.js showActivity) → tự đi theo cả khi
+             phóng to chat workspace (chat-zoom chỉ dời #chatArea, trước đây toolBar bị bỏ lại). -->
+        <!-- "BỘ NHỚ DÀI HẠN" + auto-reflect "sau mỗi 6 lượt" ĐÃ BỎ: engine tự học mới (learn.py)
+             rewire sau MỖI lượt (có debounce, read-only, undo được). Cấu hình + xem "đã học gì" +
+             hoàn tác ở trang sidebar "Tự học" (console.js renderLearn). Widget cũ vốn là UI chết,
+             không còn JS nào gắn vào (autoLearnToggle/learnBtn/memCount không có handler). -->
+
+        <!-- Vòng lặp tự cải thiện ĐÃ DỜI sang trang sidebar "Tự cải thiện" (console.js renderSelfImprove).
+             Giữ DOM ẩn để app.js cũ vẫn gắn handler không lỗi. -->
+        <div class="panel-label" style="margin-top:10px;display:none">
+          VÒNG LẶP TỰ CẢI THIỆN <span class="beta-tag">BETA</span>
+        </div>
+        <div class="loop-box" style="display:none">
+          <div class="loop-desc">Boss OS tự đánh thức theo lịch, tìm đòn bẩy cải thiện rồi tự kiểm chứng. An toàn: chỉ soạn nháp/ghi file trong vault - KHÔNG tự gọi MCP tạo đơn, đốt tiền, đăng bài.</div>
+          <label class="loop-row">
+            <span>Bật tự chạy nền</span>
+            <label class="toggle"><input type="checkbox" id="loopEnabled"><span></span></label>
+          </label>
+          <label class="loop-row">
+            <span>Mục tiêu</span>
+            <select id="loopGoal" class="loop-sel">
+              <option value="business">Cải thiện chỉ số kinh doanh</option>
+              <option value="brain">Làm dày bộ não (Wiki)</option>
+              <option value="product">Cải thiện Boss OS hữu dụng hơn</option>
+              <option value="custom">Tự định nghĩa…</option>
+            </select>
+          </label>
+          <textarea id="loopCustomGoal" class="loop-custom" placeholder="Mô tả mục tiêu tự cải thiện của riêng anh…" style="display:none"></textarea>
+          <label class="loop-row">
+            <span>Chế độ</span>
+            <select id="loopMode" class="loop-sel">
+              <option value="suggest">Chỉ đề xuất (an toàn)</option>
+              <option value="auto">Tự làm (ghi nháp vào vault)</option>
+            </select>
+          </label>
+          <label class="loop-row">
+            <span>Chu kỳ (phút)</span>
+            <input type="number" id="loopInterval" class="loop-num" min="5" value="60">
+          </label>
+          <div class="loop-actions">
+            <button class="loop-btn" id="loopRunNow">▶ Chạy ngay</button>
+            <button class="loop-btn ghost" id="lintBtn">🩺 LINT Wiki</button>
+          </div>
+          <div class="loop-status" id="loopStatus">Tắt</div>
+          <div class="loop-log" id="loopLog"></div>
+        </div>
+
+        <!-- HỆ THỐNG + MCP đã dời xuống .hud-footer (đáy trang) -->
+
+        <!-- ===== CÀI ĐẶT NHANH: avatar + tên miền + giọng nói + tốc độ (gộp về sidebar) ===== -->
+        <details class="quick-set" id="quickSet" open>
+          <summary class="panel-label" style="cursor:pointer;list-style:none;user-select:none">
+            ⚙ CÀI ĐẶT NHANH <span class="qs-caret">▸</span>
+          </summary>
+          <div class="quick-set-body">
+
+            <label class="qs-row">
+              <span>🔊 Đọc trả lời bằng giọng</span>
+              <span class="toggle"><input type="checkbox" id="qsTts" checked><span></span></span>
+            </label>
+
+            <!-- Nhà cung cấp giọng đọc: console.js render vào đây khi mở trang Cài đặt (gộp cùng nhóm giọng nói) -->
+            <div id="ttsProviderHost"></div>
+
+            <!-- Giọng đọc + ngôn ngữ nghe + tốc độ (dời từ header xuống, giữ nguyên id/name) -->
+            <div class="voice-picker-wrap">
+              <button id="voicePickerBtn" style="display:none" aria-hidden="true"></button>
+              <div class="voice-popover" id="voicePopover">
+                <div class="popover-section">
+                  <div class="popover-label">NGÔN NGỮ NGHE</div>
+                  <div class="voice-options">
+                    <label class="voice-opt">
+                      <input type="radio" name="recognitionLang" value="vi-VN" checked>
+                      <div><strong>Tiếng Việt</strong><div class="opt-sub">vi-VN · mặc định</div></div>
+                    </label>
+                    <label class="voice-opt">
+                      <input type="radio" name="recognitionLang" value="en-US">
+                      <div><strong>Tiếng Anh</strong><div class="opt-sub">en-US · khi nói toàn Anh</div></div>
+                    </label>
+                  </div>
+                </div>
+                <div class="popover-section" id="edgeVoiceSection">
+                  <div class="popover-label">GIỌNG ĐỌC <span class="dim" style="text-transform:none;letter-spacing:0">(Edge)</span></div>
+                  <div class="voice-options">
+                    <label class="voice-opt">
+                      <input type="radio" name="voice" value="vi-VN-HoaiMyNeural" checked>
+                      <div><strong>HoaiMy</strong><div class="opt-sub">Nữ · tự nhiên nhất</div></div>
+                    </label>
+                    <label class="voice-opt">
+                      <input type="radio" name="voice" value="vi-VN-NamMinhNeural">
+                      <div><strong>NamMinh</strong><div class="opt-sub">Nam · trầm</div></div>
+                    </label>
+                  </div>
+                </div>
+                <div class="popover-section">
+                  <div class="popover-label">TỐC ĐỘ <span id="rateLabel" style="float:right;color:var(--accent);font-family:var(--font)">1.10×</span></div>
+                  <input type="range" id="rateSlider" min="0.7" max="1.8" step="0.05" value="1.1" style="width:100%">
+                  <div class="rate-marks"><span>Chậm</span><span>BT</span><span>Nhanh</span></div>
+                </div>
+                <div class="popover-section">
+                  <button class="test-btn" id="testVoiceBtn">▶ Nghe thử</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="qs-block">
+              <div class="popover-label">ẢNH ĐẠI DIỆN</div>
+              <div style="display:flex;align-items:center;gap:12px;margin:6px 0">
+                <img id="brandLogoPreview" src="/brand-logo" alt="logo"
+                     style="width:48px;height:48px;border-radius:10px;object-fit:cover;border:1px solid var(--border)">
+                <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+                  <label class="s-btn" style="cursor:pointer;display:block;text-align:center">Tải ảnh lên
+                    <input type="file" id="brandLogoInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+                  <button class="s-btn-ghost" id="brandLogoReset">Khôi phục mặc định</button>
+                </div>
+              </div>
+              <div class="opt-sub" id="brandLogoStatus"></div>
+            </div>
+
+            <div class="qs-block">
+              <div class="popover-label">TÊN MIỀN & SSL</div>
+              <div class="opt-sub" style="margin:4px 0 8px">Trỏ tên miền riêng để chạy HTTPS. VPS thường (DigitalOcean/Vultr): bật SSL ngay đây. Hostinger: đặt tên miền qua docker-compose.hostinger.yml (xem DEPLOY.md).</div>
+              <div class="dom-field">
+                <input id="setDomain" placeholder="VD: boss.tencuaban.com" autocomplete="off" spellcheck="false">
+                <button class="s-btn" id="saveDomain">Lưu</button>
+              </div>
+              <div class="dom-status" id="domStatusRow" style="display:none">
+                <span class="dom-badge" id="dnsBadge">DNS: đang kiểm tra</span>
+                <span class="dom-badge" id="sslBadge">SSL: đang kiểm tra</span>
+              </div>
+              <div class="dom-ssl" id="domSslRow" style="display:none">
+                <button class="s-btn" id="sslToggle">Bật SSL</button>
+                <button class="s-btn-ghost" id="checkDomain">Kiểm tra lại</button>
+              </div>
+              <div id="domainGuide" class="dom-guide" style="display:none"></div>
+              <div class="opt-sub" id="domainStatus"></div>
+            </div>
+
+          </div>
+        </details>
+      </aside>
+    </div>
+
+    <!-- (ô nhập chat + attach-bar đã dời vào .hud-right để gộp thành khối chat bên phải) -->
+
+    <!-- ===== FOOTER: trạng thái hệ thống + MCP (dời từ cột phải xuống) ===== -->
+    <footer class="hud-footer" id="hudFooter">
+      <div class="hud-foot-sec">
+        <div class="panel-label">HỆ THỐNG</div>
+        <div class="sys-status">
+          <div class="mcp-item" id="claudeStatus">⬤ Claude Code CLI</div>
+          <div class="mcp-item" id="ttsStatus">⬤ Voice (Edge TTS)</div>
+        </div>
+      </div>
+      <div class="hud-foot-sec foot-mcp">
+        <div class="panel-label">MCP ĐANG DÙNG</div>
+        <div id="mcpList" class="mcp-list"><div class="mcp-item dim">Chưa có hoạt động</div></div>
+        <span class="foot-more" id="footMore">…xem thêm</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ===== Console layer: rail điều hướng + trang quản lý (Alpine-driven) ===== -->
+  <nav class="rail" x-data x-cloak>
+    <!-- ĐỈNH cố định -->
+    <div class="rail-top">
+      <div class="rail-brand"><img src="/brand-logo" alt="Boss OS" style="width:30px;height:30px;border-radius:8px;display:block;object-fit:cover"></div>
+      <button class="rail-toggle" id="railToggle" title="Thu gọn / mở rộng thanh bên" aria-label="Thu gọn hoặc mở rộng thanh bên">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+    </div>
+    <!-- GIỮA cuộn được - nhồi bao nhiêu tính năng cũng cuộn -->
+    <div class="rail-nav">
+      <template x-for="it in $store.nav.items" :key="it.id">
+        <button class="rail-item" :class="{ active: $store.nav.active === it.id, 'rail-sub': it.sub }"
+                x-show="!it.sub || $store.nav.settingsOpen"
+                @click="$store.nav.go(it.id)" :title="it.label">
+          <span class="rail-ico" x-html="it.icon"></span>
+          <span class="rail-lbl" x-text="it.label"></span>
+          <span class="rail-caret" x-show="it.id === 'settings'" :class="{ open: $store.nav.settingsOpen }">▾</span>
+        </button>
+      </template>
+    </div>
+    <!-- ĐÁY cố định: version + tác giả (luôn hiện) -->
+    <div class="rail-foot">
+      <div class="rf-ver" id="railVersion">v0.0.0</div>
+      <a class="rf-author" href="https://www.phamquangdai.com/money-making-map" target="_blank" rel="noopener">by Phạm Đại</a>
+    </div>
+  </nav>
+
+  <section class="cview" id="cview" x-data x-cloak x-show="$store.nav.active !== 'home'" x-transition.opacity.duration.200ms>
+    <div class="cview-head">
+      <div>
+        <div class="cview-title"><span class="ico" x-text="$store.nav.meta.icon"></span> <span x-text="$store.nav.meta.label"></span></div>
+        <div class="cview-sub" x-text="$store.nav.meta.sub"></div>
+      </div>
+    </div>
+    <div class="cview-body" id="cviewBody"></div>
+  </section>
+
+  <!-- Studio tách thành các trang sidebar riêng (console.js render vào #cviewBody).
+       Editor + run-drawer giờ là overlay TOP-LEVEL (dùng từ trang Workflows/Agents). -->
+  <!-- Run output drawer -->
+  <div class="run-drawer" id="runDrawer">
+    <div class="run-head">
+      <span id="runTitle">Chạy workflow</span>
+      <button class="run-close" id="runClose">✕</button>
+    </div>
+    <div class="run-steps" id="runSteps"></div>
+  </div>
+  <!-- Editor modal (agent/workflow) -->
+  <div class="studio-editor" id="studioEditor">
+    <div class="editor-box" id="editorBox"></div>
+  </div>
+
+  <!-- Vault structure banner -->
+  <div class="vault-banner" id="vaultBanner">
+    <span class="vb-icon">⚠</span>
+    <span class="vb-text" id="vbText">Cấu trúc vault chưa chuẩn cho Boss OS.</span>
+    <button class="vb-init" id="vbInit">Khởi tạo cấu trúc</button>
+    <button class="vb-close" id="vbClose">✕</button>
+  </div>
+
+  <!-- Drag-drop overlay -->
+  <div class="drop-overlay" id="dropOverlay">
+    <div class="drop-msg">📎 Thả file vào đây → lưu vào Sources</div>
+  </div>
+
+  <!-- Folder picker modal -->
+  <div class="modal-overlay" id="folderModal">
+    <div class="folder-modal">
+      <div class="fm-head">
+        <span>📁 Chọn brain (folder chứa ghi chú .md)</span>
+        <button class="fm-close" id="fmClose">✕</button>
+      </div>
+      <div class="fm-path" id="fmPath">-</div>
+      <div class="fm-list" id="fmList"></div>
+      <div class="fm-foot">
+        <span class="fm-hint" id="fmHint"></span>
+        <button class="fm-use" id="fmUse">Dùng folder này</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bộ cài đặt lần đầu (hiện khi chưa setup_done) -->
+  <div class="modal-overlay" id="setupWizard">
+    <div class="settings-modal" style="max-width:460px">
+      <div class="fm-head"><img src="/brand-logo" alt="" style="width:24px;height:24px;border-radius:6px;vertical-align:middle;margin-right:6px;object-fit:cover"><span>Chào mừng tới Boss OS</span></div>
+      <div class="settings-body">
+        <style>
+        #setupWizard .settings-body{padding-bottom:22px}
+        #setupWizard .set-sec{margin-top:18px}
+        #setupWizard .set-sec h4{display:flex;align-items:center;gap:8px;font-size:15px;margin:0 0 4px}
+        #setupWizard label:not(.wz-card){font-size:13px;color:var(--text2);margin-top:10px;display:block}
+        #setupWizard input:not([type=radio]){margin-top:5px}
+        #setupWizard input::placeholder{color:var(--text3)}
+        #setupWizard .wz-prov{display:flex;flex-direction:column;gap:9px;margin-top:10px}
+        #setupWizard .wz-card{display:flex;gap:11px;align-items:flex-start;padding:12px 13px;border:1px solid var(--border);background:var(--input-bg);border-radius:11px;cursor:pointer;transition:border-color .15s,background .15s}
+        #setupWizard .wz-card:hover{border-color:var(--accent)}
+        #setupWizard .wz-card.sel{border-color:var(--accent);background:rgba(232,168,92,.09)}
+        #setupWizard .wz-card input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+        #setupWizard .wz-card.sel{box-shadow:0 0 0 1px var(--accent) inset}
+        #setupWizard .wz-card>div{flex:1 1 auto;min-width:0}
+        #setupWizard .wz-card b{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:14px;font-weight:700;color:var(--text)}
+        .wz-rec{font-size:11px;background:var(--accent);color:#1a1720;border-radius:6px;padding:1px 7px;font-weight:700}
+        .wz-pdesc{font-size:12.5px;color:var(--text2);margin-top:4px;line-height:1.5}
+        .wz-tokhelp{border:1px solid rgba(232,168,92,.28);background:rgba(232,168,92,.05);border-radius:10px;padding:11px 13px;margin-top:9px;font-size:13px;color:var(--text2);line-height:1.55}
+        .wz-tokhelp ol{margin:6px 0 4px 18px;padding:0} .wz-tokhelp li{margin:3px 0}
+        .wz-tokhelp code,#wzProvHint code{background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px;font-size:12px}
+        #wzProvHint{margin-top:9px;font-size:13px;color:var(--text3);line-height:1.5}
+        #setupWizard .set-actions{margin-top:22px}
+        #setupWizard #wzErr{margin-top:12px}
+        </style>
+        <div class="set-note">Vài bước nhanh để bắt đầu. Mọi thứ đổi lại được sau trong ⚙ Cài đặt.</div>
+        <div class="set-sec">
+          <h4>1. Workspace</h4>
+          <label>Tên hiển thị</label><input id="wzWsName" placeholder="Boss OS">
+        </div>
+        <div class="set-sec">
+          <h4>2. Tài khoản admin <span class="dim">(khuyến nghị)</span></h4>
+          <div class="set-note">Đặt mật khẩu để chặn người lạ - quan trọng nếu đưa lên VPS. Bỏ trống nếu chỉ chạy máy cá nhân.</div>
+          <label>Tài khoản</label><input id="wzUser" placeholder="Admin">
+          <label>Mật khẩu</label><input id="wzPass" type="password" data-pw placeholder="Để trống nếu không đặt mật khẩu">
+          <div id="wzTokenWrap" style="display:none">
+            <label>Mã thiết lập <span class="dim">(bảo mật)</span></label>
+            <input id="wzToken" placeholder="Dán MÃ THIẾT LẬP từ log server">
+            <div class="wz-tokhelp">
+              <b>❓ Mã thiết lập là gì?</b> Boss OS đang chạy trên server công khai. Để chắc <b>chính bạn</b> (không phải người lạ vô tình mở link) là người tạo tài khoản admin, bạn dán một mã chỉ in ra <b>log server</b> - nơi duy nhất chủ máy xem được.
+              <br><b>Cách lấy mã (Hostinger → App terminal):</b>
+              <ol>
+                <li>Mở app → bấm <b>App terminal</b> (bạn sẽ vào BÊN TRONG container <code>boss</code>).</li>
+                <li>Chạy: <code>cat /data/state/.setup_token</code></li>
+                <li>Copy chuỗi hiện ra → dán vào ô trên.</li>
+              </ol>
+              <span class="dim">Nếu SSH vào HOST (không phải App terminal): <code>docker compose logs boss | grep "SETUP TOKEN"</code></span><br>
+              💡 <b>Khỏi cần mã:</b> nếu lúc deploy bạn đặt sẵn env <code>BOSS_ADMIN_PASSWORD</code> (+ <code>BOSS_ADMIN_USER</code>), mở app ra là <b>đăng nhập luôn</b>, không hỏi mã.
+            </div>
+          </div>
+        </div>
+        <div class="set-sec">
+          <h4>3. Nhà cung cấp AI (bộ não)</h4>
+          <div class="set-note">Chọn 1 nhà cung cấp chính. Đổi lại được trong ⚙ <b>Models</b>.</div>
+          <div class="wz-prov" id="wzProv">
+            <label class="wz-card" data-prov="anthropic-cli">
+              <input type="radio" name="wzprov" value="anthropic-cli" checked>
+              <div><b>🧠 Claude Code <span class="wz-rec">khuyên dùng</span></b>
+                <div class="wz-pdesc">Đăng nhập subscription Claude → đủ MCP, skill, đọc/ghi file, vòng lặp tự cải thiện. Mạnh & đầy đủ nhất.</div></div>
+            </label>
+            <label class="wz-card" data-prov="openai-oauth">
+              <input type="radio" name="wzprov" value="openai-oauth">
+              <div><b>💬 ChatGPT (gói subscription)</b>
+                <div class="wz-pdesc">Đăng nhập ChatGPT Plus/Pro (qua Codex) → vẫn dùng được MCP của Boss OS. Hợp nếu bạn đã có gói ChatGPT.</div></div>
+            </label>
+            <label class="wz-card" data-prov="openrouter">
+              <input type="radio" name="wzprov" value="openrouter">
+              <div><b>🌐 OpenRouter</b>
+                <div class="wz-pdesc">Nhiều model giá rẻ (chat thuần, không MCP). Chỉ cần API key - không cần đăng nhập.</div></div>
+            </label>
+          </div>
+          <div id="wzOrKey" style="display:none">
+            <label>OpenRouter API key <span class="dim">(có thể dán sau ở Models)</span></label>
+            <input id="wzOrKeyInput" placeholder="Dán API key sk-or-v1-… (tùy chọn)">
+          </div>
+          <div id="wzProvHint"></div>
+        </div>
+        <div class="set-actions"><button class="s-btn" id="wzFinish">Bắt đầu dùng Boss OS →</button></div>
+        <div class="auth-err" id="wzErr"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Đăng nhập (chỉ hiện khi admin đã đặt mật khẩu & chưa đăng nhập) -->
+  <div class="modal-overlay" id="authOverlay">
+    <div class="folder-modal auth-modal">
+      <div class="fm-head"><img src="/brand-logo" alt="" style="width:24px;height:24px;border-radius:6px;vertical-align:middle;margin-right:6px;object-fit:cover"><span id="authTitle">Đăng nhập Boss OS</span></div>
+      <div class="auth-body">
+        <input id="authUser" placeholder="Tài khoản" autocomplete="username">
+        <input id="authPass" type="password" data-pw placeholder="Mật khẩu" autocomplete="current-password">
+        <button class="fm-use" id="authSubmit">Đăng nhập</button>
+        <div class="auth-err" id="authErr"></div>
+        <div class="auth-help"><span id="authForgot">Quên mật khẩu?</span></div>
+        <div class="auth-reset" id="authResetInfo" style="display:none">
+          Mở file <code>server/settings.json</code>, xóa khối <code>"auth"</code> (hoặc đặt rỗng), rồi
+          chạy <code>stop-boss.bat</code> → <code>start-boss.vbs</code>. Mở lại sẽ về bộ cài đặt để tạo tài khoản mới.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cài đặt -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="settings-modal">
+      <div class="fm-head"><span>⚙ Cài đặt Boss OS</span><button class="fm-close" id="settingsClose">✕</button></div>
+      <div class="settings-body">
+        <div class="set-sec">
+          <h4>Chung</h4>
+          <label>Tên workspace</label><input id="setWsName">
+          <button class="s-btn" id="saveGeneral">Lưu</button>
+        </div>
+        <div class="set-sec">
+          <h4>Model</h4>
+          <label>Engine xử lý chat</label>
+          <select id="setEngine">
+            <option value="cli">Claude Code CLI - đầy đủ MCP / skill / loop</option>
+            <option value="openrouter">OpenRouter - chat thuần, KHÔNG có MCP</option>
+          </select>
+          <label>Model Claude (khi dùng CLI)</label>
+          <select id="setClaudeModel">
+            <option value="">Mặc định</option><option value="sonnet">Sonnet</option>
+            <option value="opus">Opus</option><option value="haiku">Haiku</option>
+          </select>
+          <label>OpenRouter API key <span class="dim" id="setKeyHint"></span></label>
+          <input id="setOrKey" type="password" placeholder="Để trống nếu không đổi (dán key sk-or-...)">
+          <label>OpenRouter model <button type="button" class="set-mini" id="loadModelsBtn">↻ Tải danh sách</button></label>
+          <select id="setOrModelSel"><option value="__custom__">✏️ Nhập tên model khác (custom)…</option></select>
+          <input id="setOrModel" placeholder="VD openai/gpt-4o-mini" style="display:none">
+          <div class="set-note">Danh sách model tải động từ OpenRouter. Không thấy model cần? Chọn "Nhập tên khác" rồi gõ chính xác id. OpenRouter sẽ kích hoạt ở bản kế (P2).</div>
+          <button class="s-btn" id="saveModel">Lưu</button>
+        </div>
+        <div class="set-sec">
+          <h4>Telegram</h4>
+          <label class="loop-row" style="padding:0"><span>Bật bot Telegram</span>
+            <label class="toggle"><input type="checkbox" id="setTgEnabled"><span></span></label></label>
+          <label>Bot token <span class="dim" id="setTgHint"></span></label>
+          <input id="setTgToken" type="password" placeholder="Để trống nếu không đổi (token 123456:ABC...)">
+          <label>Chat ID được phép dùng <span class="dim">(nhiều ID cách nhau dấu phẩy)</span></label>
+          <input id="setTgChat" placeholder="VD 123456789, 987654321">
+          <div class="set-note" id="setTgStatus">-</div>
+          <div class="set-note">Nhắn Telegram ↔ Boss OS. Dùng đúng engine đang chọn (CLI thì có cả MCP để hỏi doanh thu/ads qua điện thoại). Có thể dùng lại token bot Morning Briefing.</div>
+          <div class="set-actions">
+            <button class="s-btn" id="saveTelegram">Lưu & bật</button>
+            <button class="s-btn-ghost" id="testTelegram">Gửi test</button>
+          </div>
+        </div>
+        <div class="set-sec">
+          <h4>Tài khoản đăng nhập</h4>
+          <div class="set-note" id="setAuthState"></div>
+          <label>Tài khoản</label><input id="setAuthUser" placeholder="Admin">
+          <label>Mật khẩu</label><input id="setAuthPass" type="password" data-pw placeholder="Đặt mật khẩu (để trống nếu không đổi)">
+          <div class="set-actions">
+            <button class="s-btn" id="savePassword">Lưu tài khoản</button>
+            <button class="s-btn-ghost" id="logoutBtn">Đăng xuất</button>
+            <button class="s-btn-ghost" id="disableAuthBtn">Tắt đăng nhập</button>
+          </div>
+          <div class="set-note">Đặt mật khẩu để chặn người lạ khi đưa Boss OS lên VPS. Lưu ý: trên VPS nên chạy sau HTTPS (reverse proxy).</div>
+        </div>
+        <div class="set-note" style="opacity:.7">Ảnh đại diện, tên miền, giọng nói &amp; tốc độ giờ nằm ở mục <b>CÀI ĐẶT NHANH</b> (thanh bên phải).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Holder ẩn giữ #quickSet khi KHÔNG ở trang Cài đặt (node vẫn trong DOM → handler còn sống) -->
+  <div id="quickSetHolder" hidden></div>
+
+  <script src="/static/voice.js?v=115"></script>
+  <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/3d-force-graph@1.73.4/dist/3d-force-graph.min.js"></script>
+  <script src="/static/graph3d.js?v=120"></script>
+  <script src="/static/app.js?v=156"></script>
+  <script src="/static/branding.js?v=106"></script>
+  <script src="/static/quick-settings.js?v=103"></script>
+  <script src="/static/chat-zoom.js?v=104"></script>
+  <script src="/static/brains-ui.js?v=104"></script>
+  <script src="/static/sessions-ui.js?v=105"></script>
+  <script src="/static/studio.js?v=118"></script>
+  <!-- Console layer: console.js đăng ký store TRƯỚC khi Alpine khởi động (defer) -->
+  <script src="/static/console.js?v=156"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <!-- Nút con mắt: mọi ô mật khẩu (kể cả render động) đều bấm được để xem/ẩn -->
+  <style>
+    .pw-wrap{position:relative;display:block;width:100%;flex:1 1 auto;min-width:0}
+    .pw-wrap>input{width:100%;box-sizing:border-box;padding-right:42px !important}
+    .pw-eye{position:absolute;top:50%;right:8px;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;
+      width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--text3);cursor:pointer;border-radius:6px;transition:color .15s,background .15s}
+    .pw-eye:hover{color:var(--text);background:rgba(255,255,255,.06)}
+    .pw-eye svg{width:18px;height:18px}
+  </style>
+  <script>
+  (function(){
+    var EYE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+    var OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    // CHỈ gắn mắt cho ô mật khẩu THẬT (đăng nhập / đổi mật khẩu) - đánh dấu data-pw.
+    // API key / token KHÔNG gắn (vừa thừa, vừa vỡ layout thẻ provider).
+    function decorate(inp){
+      if(!inp || inp.dataset.pwEye || inp.type!=='password' || inp.dataset.pw===undefined) return;
+      inp.dataset.pwEye='1';
+      var wrap=document.createElement('span'); wrap.className='pw-wrap';
+      inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+      var btn=document.createElement('button'); btn.type='button'; btn.className='pw-eye';
+      btn.setAttribute('aria-label','Hiện/ẩn mật khẩu'); btn.title='Hiện/ẩn mật khẩu'; btn.innerHTML=EYE;
+      btn.addEventListener('click',function(e){
+        e.preventDefault();
+        var show=inp.type==='password';
+        inp.type=show?'text':'password'; btn.innerHTML=show?OFF:EYE; inp.focus();
+      });
+      wrap.appendChild(btn);
+    }
+    function scan(root){ (root||document).querySelectorAll('input[type=password]:not([data-pw-eye])').forEach(decorate); }
+    if(document.readyState!=='loading') scan(); else document.addEventListener('DOMContentLoaded',function(){scan();});
+    new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){ var a=muts[i].addedNodes; for(var j=0;j<a.length;j++){ var n=a[j];
+        if(n.nodeType!==1) continue;
+        if(n.matches&&n.matches('input[type=password]')) decorate(n);
+        else scan(n);
+      }}
+    }).observe(document.body,{childList:true,subtree:true});
+  })();
+  </script>
+</body>
+</html>

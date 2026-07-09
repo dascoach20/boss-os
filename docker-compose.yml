@@ -1,0 +1,86 @@
+# ============================================================================
+# Boss OS - docker compose (PRODUCTION: pull image dựng sẵn từ GHCR)
+#
+# CÀI TRÊN HOSTINGER: dùng file RIÊNG cho Hostinger (1 container, deploy là chạy, không kén hạ tầng):
+#   https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.hostinger.yml
+#   (Docker Manager → Compose → URL. Cách gắn TÊN MIỀN + HTTPS ghi trong chú thích cuối file đó / DEPLOY.md.)
+#   File NÀY cũng chạy trên Hostinger nhưng kèm Watchtower (hay báo "Partially running") → nên dùng file trên.
+#
+# CÀI TRÊN VPS BẤT KỲ (DigitalOcean/Vultr... - HTTPS bằng Caddy, xem DEPLOY.md):
+#   1) docker compose run --rm boss claude auth login --claudeai   # ĐĂNG NHẬP CLAUDE 1 LẦN
+#   2) docker compose up -d
+#
+# ⚠️ BẢO MẬT: chạy public (0.0.0.0) tự BẬT BOSS_REQUIRE_LOGIN → mở app ra là màn TẠO TÀI KHOẢN
+#    / ĐĂNG NHẬP, không ai vào điều khiển Claude được khi chưa có mật khẩu.
+#
+# Muốn build từ source thay vì pull image:  docker compose -f docker-compose.build.yml up -d --build
+# ============================================================================
+services:
+  boss:
+    image: ghcr.io/pham-dai-2000/boss-os:latest
+    container_name: boss
+    restart: unless-stopped
+    pull_policy: always
+    environment:
+      BOSS_HOST: 0.0.0.0
+      BOSS_PORT: "7777"
+      BOSS_REQUIRE_LOGIN: "1"     # ÉP đăng nhập/đăng ký khi mở app (public)
+      BOSS_STATE_DIR: /data/state
+      BRAIN_PATH: /data/brain
+      BRAINS_DIR: /brains          # thư mục CHA chứa MỌI second brain (mỗi folder con = 1 brain)
+      OBSIDIAN_VAULT_PATH: /data/vault
+      CLAUDE_CWD: /app
+      WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN:-boss-update}   # để nút "Cập nhật" gọi được Watchtower
+    ports:
+      - "7777:7777"                 # Hostinger proxy / VPS map vào cổng này → cấp URL công khai
+    volumes:
+      - boss-data:/data                       # state: settings/mật khẩu/sessions/loop (có secret → KHÔNG git)
+      - boss-brains:/brains                   # MỌI second brain (kiến thức của bạn) - bền qua mọi update
+      # ↑ Muốn BACKUP brain lên GitHub: đổi dòng trên thành bind-mount thư mục thật trên VPS, vd:
+      #     - ./brains:/brains
+      #   rồi 1 lần cấp quyền cho user non-root của container:  sudo chown -R 10001:10001 ./brains
+      #   Sau đó: cd brains && git init && git add -A && git commit -m backup && git push
+      - claude-auth:/home/boss/.claude        # token đăng nhập Claude (giữ qua mọi update!)
+      - codex-auth:/home/boss/.codex          # token đăng nhập ChatGPT/Codex (codex login - giữ qua update)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,os,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+os.getenv('BOSS_PORT','7777')+'/health',timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  # (Tùy chọn, cho VPS KHÔNG phải Hostinger) Cloudflare Tunnel → URL HTTPS, không cần mở port:
+  #   docker compose --profile tunnel up -d  &&  docker compose logs tunnel | grep trycloudflare
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: boss-tunnel
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    depends_on:
+      - boss
+    command: tunnel --no-autoupdate --url http://boss:7777
+    # URL cố định: tạo named tunnel ở Cloudflare Zero Trust → TUNNEL_TOKEN env → đổi command thành:
+    #   command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+
+  # Cập nhật 1-CLICK từ UI (nút "Cập nhật ngay"). Watchtower cần quyền Docker (socket) nên hay báo
+  # "Partially running" trên Hostinger Docker Manager → MẶC ĐỊNH TẮT (profile "update"). Bật khi cần:
+  #   docker compose --profile update up -d
+  # (Hostinger: dùng docker-compose.hostinger.yml + Redeploy để cập nhật, KHÔNG cần Watchtower.)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: boss-watchtower
+    restart: unless-stopped
+    profiles: ["update"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_HTTP_API_UPDATE: "true"                    # chỉ cập nhật khi có HTTP trigger (không tự polling)
+      WATCHTOWER_HTTP_API_TOKEN: ${WATCHTOWER_TOKEN:-boss-update}
+      WATCHTOWER_CLEANUP: "true"                            # dọn image cũ sau khi update
+    command: boss                                         # chỉ theo dõi/cập nhật container boss
+
+volumes:
+  boss-data:
+  boss-brains:
+  claude-auth:
+  codex-auth:
