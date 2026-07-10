@@ -58,7 +58,7 @@ Bạn đấu các **MCP** của riêng mình vào (bán hàng/POS, quảng cáo,
 
 VPS Hostinger → **Docker Manager → Compose → URL** → dán **file Hostinger** rồi **Deploy**:
 ```
-https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.hostinger.yml
+https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.hostinger.yml
 ```
 Ô **Environment** đặt biến `DOMAIN_NAME` (BẮT BUỘC, để Traefik của Hostinger cấp HTTPS):
 - **Link miễn phí** (không cần mua tên miền): `DOMAIN_NAME=boss.<hostname-vps>.hstgr.cloud`
@@ -81,7 +81,7 @@ Deploy → đợi 1-3 phút Traefik cấp SSL → mở `https://<DOMAIN_NAME>`. 
 ```bash
 # Cần Docker (chưa có?  curl -fsSL https://get.docker.com | sh)
 mkdir boss && cd boss
-curl -fsSLO https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.yml
+curl -fsSLO https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.yml
 
 docker compose run --rm boss claude auth login --claudeai   # đăng nhập Claude 1 lần
 docker compose up -d                                          # pull image + chạy
@@ -91,7 +91,7 @@ Mở `http://<ip-vps>:7777` → màn tạo tài khoản admin (xem MÃ THIẾT L
 ### Cách 3 - Cài trực tiếp lên Linux/macOS (không Docker)
 
 ```bash
-git clone https://github.com/pham-dai-2000/boss-os.git boss && cd boss
+git clone https://github.com/dascoach20/boss-os.git boss && cd boss
 chmod +x install.sh && ./install.sh
 ```
 Script tự cài Python + Node + Claude CLI, tạo venv, đăng ký dịch vụ systemd tự chạy khi boot, in ra địa chỉ. Báo Claude chưa đăng nhập thì chạy 1 lần: `claude auth login --claudeai`.
@@ -258,6 +258,6 @@ boss-os/
 
 <div align="center">
 
-Made with ☕ by **[Phạm Quảng Đại](https://phamquangdai.com)** · Repo: `github.com/pham-dai-2000/boss-os`
+Made with ☕ by **[Phạm Quảng Đại](https://phamquangdai.com)** · Repo: `github.com/dascoach20/boss-os`
 
 </div>

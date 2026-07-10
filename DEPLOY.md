@@ -13,7 +13,7 @@ Boss OS là một AI agent cá nhân + Second Brain. "Bộ não" của nó là *
 
 VPS Hostinger → **Docker Manager → Compose → URL** → dán link rồi **Deploy**:
 ```
-https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.yml
+https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.yml
 ```
 Hostinger pull image + chạy. Mở app bằng `http://<ip-vps>:7777` (IP xem ở hPanel → VPS) → ra
 màn **tạo tài khoản admin**.
@@ -42,7 +42,7 @@ màn **tạo tài khoản admin**.
 Cần Docker. Chưa có? `curl -fsSL https://get.docker.com | sh`
 ```bash
 mkdir boss && cd boss
-curl -fsSLO https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.yml
+curl -fsSLO https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.yml
 
 docker compose run --rm boss claude auth login --claudeai   # ĐĂNG NHẬP CLAUDE 1 LẦN (link + code)
 docker compose up -d                                          # pull image GHCR + chạy
@@ -85,7 +85,7 @@ link riêng chạy HTTPS mà không cần mua tên miền. **Lưu ý (đã kiể
 1. Xem **hostname VPS** ở hPanel → VPS (vd `srv1782015.hstgr.cloud`).
 2. Docker Manager → Compose → URL:
    ```
-   https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.hostinger.yml
+   https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.hostinger.yml
    ```
 3. Ô **Environment** (Biến môi trường) đặt **`DOMAIN_NAME=boss.<hostname-vps>.hstgr.cloud`**
    (vd `DOMAIN_NAME=boss.srv1782015.hstgr.cloud`). Muốn tên miền RIÊNG (vd `bossos.com`) thì đặt tên miền đó + trỏ DNS A về IP VPS.
@@ -132,7 +132,7 @@ Mở giao diện Boss từ máy khác mà KHÔNG cần mở port / không cần 
 ## Cách 2 - Cài trực tiếp lên Linux/macOS (không Docker)
 
 ```bash
-git clone https://github.com/pham-dai-2000/boss-os.git boss && cd boss
+git clone https://github.com/dascoach20/boss-os.git boss && cd boss
 chmod +x install.sh && ./install.sh
 ```
 

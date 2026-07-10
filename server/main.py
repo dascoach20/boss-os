@@ -3149,7 +3149,7 @@ async def config():
 # ============================================
 # Phiên bản + cập nhật trong UI
 # ============================================
-GITHUB_REPO = "pham-dai-2000/boss-os"
+GITHUB_REPO = "dascoach20/boss-os"
 _UPDATE_TASKS = set()   # giữ ref mạnh cho asyncio.create_task (tránh GC nuốt mất task)
 
 
