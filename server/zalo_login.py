@@ -1,5 +1,5 @@
 """
-Đăng nhập Zalo bằng QR ngay trong UI Boss (connector "zalo" - zalo-agent-cli).
+Đăng nhập Zalo bằng QR ngay trong UI Boss OS (connector "zalo" - zalo-agent-cli).
 Flow: POST /connect/zalo/start → spawn `npx -y zalo-agent-cli login --json` với HOME
 cô lập riêng cho tài khoản → bắt event {"event":"qr", dataUrl} đưa lên modal →
 user quét bằng app Zalo → thành công thì TỰ TẠO connection (config.home_dir trỏ
@@ -152,7 +152,7 @@ def start(label=None):
     _sweep()
     argv = _npx_argv()
     if not argv:
-        return {"ok": False, "error": "Cần cài Node.js 20+ (lệnh npx) trên máy chạy Boss - tải tại nodejs.org"}
+        return {"ok": False, "error": "Cần cài Node.js 20+ (lệnh npx) trên máy chạy Boss OS - tải tại nodejs.org"}
     sid = uuid.uuid4().hex[:10]
     slug = mcp_store._slugify(label or "zalo")
     # Kèm sid: 2 tài khoản đặt CÙNG tên gợi nhớ vẫn phải 2 home riêng (account active của

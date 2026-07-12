@@ -18,12 +18,12 @@ Hướng dẫn sử dụng chi tiết từng chức năng của Boss OS. Mỗi t
 ### Mở rộng năng lực
 - [06 - Skills](06-skills.md) - gom nhóm, tìm kiếm, bật/tắt, thêm/sửa/xoá skill.
 - [07 - Agents & Workflows](07-agents-va-workflows.md) - Studio: tạo trợ lý chuyên biệt + chuỗi tự động.
-- [08 - Tự cải thiện](08-tu-cai-thien.md) - Boss tự chạy nền làm 1 nhiệm vụ theo lịch + LINT Wiki.
+- [08 - Tự cải thiện](08-tu-cai-thien.md) - Boss OS tự chạy nền làm 1 nhiệm vụ theo lịch + LINT Wiki.
 - [09 - MCP & số liệu kinh doanh](09-mcp-va-so-lieu.md) - đấu công cụ ngoài đa-shop, báo cáo số thật, Data Cache.
 - [10 - Models & engine](10-models-va-engine.md) - Claude Code, OpenAI, OpenRouter, Codex, Anthropic; reasoning, model phụ.
 
 ### Kênh & lịch
-- [11 - Kênh Telegram](11-telegram.md) - hỏi Boss qua điện thoại.
+- [11 - Kênh Telegram](11-telegram.md) - hỏi Boss OS qua điện thoại.
 - [12 - Lịch & tự động hoá](12-lich-tu-dong-hoa.md) - cron/trigger/routine.
 
 ### Bộ não & dữ liệu

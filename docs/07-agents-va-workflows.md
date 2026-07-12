@@ -1,17 +1,17 @@
 # Agents & Workflows
 
-Đây là trang "Studio" của Boss: nơi bạn tạo ra các trợ lý AI chuyên biệt (Agent) và ghép chúng thành dây chuyền làm việc tự động (Workflow). Ví dụ: một agent chuyên nghiên cứu, một agent chuyên viết bài, một agent chuyên kiểm tra lại, nối thành chuỗi "nghiên cứu > viết > kiểm chứng" chạy một phát ra kết quả.
+Đây là trang "Studio" của Boss OS: nơi bạn tạo ra các trợ lý AI chuyên biệt (Agent) và ghép chúng thành dây chuyền làm việc tự động (Workflow). Ví dụ: một agent chuyên nghiên cứu, một agent chuyên viết bài, một agent chuyên kiểm tra lại, nối thành chuỗi "nghiên cứu > viết > kiểm chứng" chạy một phát ra kết quả.
 
 ## Tính năng này là gì
 
 - **Agent** là một "nhân viên AI" có vai trò cố định. Mỗi agent gồm: một cái tên, một mô tả vai trò, một hướng dẫn làm việc chi tiết (system prompt), danh sách kỹ năng (skill) được phép dùng, và một **model chạy**. Model chọn được cả **Claude** (Sonnet/Opus/Haiku/Fable - chạy qua Claude Code CLI) lẫn **ChatGPT/Codex** (GPT-5.x - chạy qua Codex CLI, cần đã đăng nhập ChatGPT ở máy/VPS). Cả hai đều đọc/ghi được file trong vault và dùng được MCP. Để trống = model mặc định của Claude Code. Model của agent được áp THẬT khi workflow chạy.
   - Lưu ý an toàn: khi workflow chạy **nền tự động** (dispatcher Kanban, chế độ file-only), agent luôn dùng Claude Code để giữ giới hạn công cụ an toàn - kể cả khi bạn chọn model Codex. Model Codex chỉ áp khi bạn chạy workflow trực tiếp ở Studio.
 - **Workflow** là một chuỗi nhiều bước, mỗi bước giao cho một agent làm một nhiệm vụ. Kết quả bước trước có thể chảy sang bước sau. Bạn có thể gắn thêm một **bước kiểm chứng**: một agent khác đóng vai người soi lỗi, mặc định giả định kết quả đang sai và phải tự chứng minh; nếu chưa đạt, workflow tự sửa lại vài lần.
-- Mọi agent và workflow được lưu thành **file .md trong vault** (bộ não đang chọn), nên bạn xem được, sửa tay được, và Boss cũng tạo được bằng lời qua chat.
+- Mọi agent và workflow được lưu thành **file .md trong vault** (bộ não đang chọn), nên bạn xem được, sửa tay được, và Boss OS cũng tạo được bằng lời qua chat.
 
 Liên quan: chọn model cho agent xem [Models & engine](10-models-va-engine.md); tạo và bật/tắt skill để gán cho agent xem [Skills](06-skills.md); lịch chạy tự động (cron/routine) xem [Lịch & tự động hoá](12-lich-tu-dong-hoa.md).
 
-## Mở ở đâu trong Boss
+## Mở ở đâu trong Boss OS
 
 Trên thanh điều hướng bên trái của dashboard (mặc định tại cổng 7777) có hai mục riêng:
 
@@ -26,7 +26,7 @@ Nếu bạn mới bắt đầu và chưa có gì, cách nhanh nhất là dùng b
 
 1. Mở trang **Workflows**.
 2. Ở góc trên bên phải, bấm nút **Tạo mẫu**.
-3. Boss sẽ tạo sẵn 3 agent và 1 workflow mẫu:
+3. Boss OS sẽ tạo sẵn 3 agent và 1 workflow mẫu:
    - Agent **Researcher**: chuyên nghiên cứu, tìm tư liệu, tổng hợp nguồn (được gán sẵn skill deep-research).
    - Agent **Writer**: chuyên viết bài từ tư liệu nghiên cứu (được gán sẵn skill salepage-16-buoc).
    - Agent **Kiểm chứng viên**: đánh giá độc lập, luôn giả định kết quả sai và phải chứng minh; không tạo nội dung, chỉ chấm.
@@ -48,7 +48,7 @@ Sau khi có mẫu, bạn có thể chạy thử ngay (xem mục "Chạy một wo
 | **Skills** | Danh sách skill có sẵn trong vault, bấm tick để cho agent được dùng. | Chọn skill hợp với vai trò |
 | **Model** | Chọn Sonnet, Opus hoặc Haiku. | Sonnet cho cân bằng, Opus khi cần suy luận sâu, Haiku khi cần nhanh và rẻ |
 
-4. Bấm **Lưu**. Nếu bạn quên nhập Tên, Boss sẽ nhắc "Nhập tên".
+4. Bấm **Lưu**. Nếu bạn quên nhập Tên, Boss OS sẽ nhắc "Nhập tên".
 5. Thẻ agent mới hiện trong danh sách, có biểu tượng 🤖, kèm tên model và các nhãn skill đã gán. Nếu chưa gán skill nào, thẻ ghi "chưa gán skill".
 
 Ghi chú về ô Skills: danh sách skill lấy từ thư mục skill của vault. Nếu vault chưa có skill nào, khung sẽ báo "Vault chưa có skill trong .claude/skills - vẫn tạo agent được, gán skill sau." Bạn vẫn tạo agent bình thường và quay lại gán sau. Cách tạo skill xem trang [Skills](06-skills.md).
@@ -60,7 +60,7 @@ Ghi chú về ô Skills: danh sách skill lấy từ thư mục skill của vaul
 
 ## Tạo một Workflow (từng bước, qua form)
 
-Cần có ít nhất một agent trước khi tạo workflow. Nếu chưa có agent nào, khi bấm tạo workflow Boss sẽ báo "Chưa có agent nào. Hãy tạo Agent trước (tab Agents) hoặc bấm Tạo mẫu."
+Cần có ít nhất một agent trước khi tạo workflow. Nếu chưa có agent nào, khi bấm tạo workflow Boss OS sẽ báo "Chưa có agent nào. Hãy tạo Agent trước (tab Agents) hoặc bấm Tạo mẫu."
 
 1. Mở trang **Workflows**.
 2. Bấm **+ Workflow** ở góc trên bên phải.
@@ -74,7 +74,7 @@ Cần có ít nhất một agent trước khi tạo workflow. Nếu chưa có ag
      - `{{prev}}` = kết quả của bước ngay trước đó.
    - Phần **Kiểm chứng** (không bắt buộc): chọn một agent đóng vai người soi lỗi cho bước này, và số lần cho phép sửa lại. Để mặc định "- không kiểm chứng -" nếu không cần. Số lần sửa mặc định là 1, cho phép từ 0 đến 5.
 5. Bấm **+ Bước** để thêm bước mới. Bấm dấu **✕** ở đầu một bước để xoá bước đó.
-6. Bấm **Lưu**. Nếu quên nhập Tên, Boss nhắc "Nhập tên". Workflow mới lưu ở trạng thái sẵn sàng (active).
+6. Bấm **Lưu**. Nếu quên nhập Tên, Boss OS nhắc "Nhập tên". Workflow mới lưu ở trạng thái sẵn sàng (active).
 
 ### Ví dụ một workflow 2 bước
 
@@ -115,13 +115,13 @@ Mỗi workflow hiện dạng một thẻ, gồm:
 
 ## Tạo agent và workflow bằng lời (qua chat)
 
-Bạn không bắt buộc phải dùng form. Trong khung trò chuyện với Boss (xem [Trò chuyện & giọng nói](02-tro-chuyen-va-giong-noi.md)), bạn có thể ra lệnh bằng lời, ví dụ:
+Bạn không bắt buộc phải dùng form. Trong khung trò chuyện với Boss OS (xem [Trò chuyện & giọng nói](02-tro-chuyen-va-giong-noi.md)), bạn có thể ra lệnh bằng lời, ví dụ:
 
 - "Tạo agent chuyên viết email bán hàng."
 - "Tạo workflow nghiên cứu rồi viết bài."
 - "Thêm bước biên tập vào workflow X."
 
-Khi đó Boss tự ghi file .md tương ứng vào vault, tự đặt slug không dấu, tự gán skill hợp lý từ skill có sẵn, và nếu workflow nhắc tới một agent chưa tồn tại thì tạo agent đó trước. Sau khi làm xong, Boss báo ngắn gọn đã tạo/sửa file nào. Bạn quay lại trang Agents hoặc Workflows là thấy ngay, không cần thao tác thêm.
+Khi đó Boss OS tự ghi file .md tương ứng vào vault, tự đặt slug không dấu, tự gán skill hợp lý từ skill có sẵn, và nếu workflow nhắc tới một agent chưa tồn tại thì tạo agent đó trước. Sau khi làm xong, Boss OS báo ngắn gọn đã tạo/sửa file nào. Bạn quay lại trang Agents hoặc Workflows là thấy ngay, không cần thao tác thêm.
 
 Cách này tiện khi bạn mô tả được ý định bằng lời nhưng ngại điền form, hoặc muốn chỉnh nhiều bước cùng lúc.
 
@@ -153,4 +153,4 @@ Sửa file rồi lưu thì trang Studio tự nhận nội dung mới ở lần t
 - **Ô Skills trống khi tạo agent.** Vault chưa có skill nào trong thư mục skill. Tạo agent trước, tạo skill sau ở trang [Skills](06-skills.md) rồi quay lại gán.
 - **Bước hiện cảnh báo "⚠ Chưa đạt kiểm chứng sau số lần thử".** Agent làm đã sửa hết số lần cho phép mà agent kiểm chứng vẫn chấm chưa đạt. Đọc lại đầu ra bước đó bằng mắt; cân nhắc chỉnh lại nhiệm vụ cho rõ hơn, đổi model mạnh hơn, hoặc tăng số lần sửa rồi chạy lại.
 - **Bảng theo dõi dừng giữa chừng.** Đóng bảng theo dõi sẽ ngắt phần đang chạy. Nếu mạng chập chờn, bảng cũng có thể dừng; mở lại workflow và bấm ▶ Chạy để chạy lại từ đầu.
-- **Trang tải mãi ghi "Đang tải...".** Server chậm hoặc chưa chạy. Kiểm tra Boss đang bật ở cổng 7777, sau đó tải lại trang. Nếu vẫn lỗi, xem [Khắc phục sự cố & FAQ](17-khac-phuc-su-co.md).
+- **Trang tải mãi ghi "Đang tải...".** Server chậm hoặc chưa chạy. Kiểm tra Boss OS đang bật ở cổng 7777, sau đó tải lại trang. Nếu vẫn lỗi, xem [Khắc phục sự cố & FAQ](17-khac-phuc-su-co.md).

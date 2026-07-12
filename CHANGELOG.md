@@ -4,6 +4,25 @@ Lịch sử phiên bản Boss OS. Bản mới nhất ở trên cùng. Xem ngay t
 
 Định dạng: mỗi phiên bản là một khối `## [x.y.z] - ngày`, bên dưới nhóm thay đổi theo `### Thêm mới / Sửa lỗi / Cải thiện / Bảo mật`.
 
+## [1.0.13] - 2026-07-09
+### Cải thiện
+- **Đồng bộ thương hiệu "Boss OS" 100% ở mọi chữ hiển thị**: đổi tất cả chữ "Boss" đứng riêng (README, trang landing, docs, mô tả connector, thông báo trong app, trợ lý tự xưng, system prompt) thành "Boss OS". Giữ nguyên định danh code (biến/class như BossGraph3D, header X-Boss-Mode) và đường dẫn thư mục vault (Boss/, Boss\agents) vì đổi sẽ hỏng code/đường dẫn. Xác nhận 0 chữ "javis" còn sót trong toàn bộ source.
+## [1.0.12] - 2026-07-09
+### Sửa lỗi
+- **Đặt lại mật khẩu qua env không ăn (nối tiếp 1.0.11)**: bản 1.0.11 có bước "lần đầu chỉ ghi nhận giá trị env, chưa áp dụng" → nếu thêm/đổi BOSS_ADMIN_PASSWORD SAU khi đã nâng cấp thì bị ghi nhận mà không áp dụng (mật khẩu cũ vẫn vào được, mới không). Nay bỏ bước đó + đổi tên file marker (bỏ qua marker cũ bị kẹt): đặt/đổi BOSS_ADMIN_PASSWORD rồi Redeploy là mật khẩu về đúng giá trị đó. Vẫn giữ: env không đổi thì không đè mật khẩu bạn tự đổi trong app.
+
+## [1.0.11] - 2026-07-09
+### Cải thiện
+- **Đặt lại mật khẩu khi quên KHÔNG cần terminal**: chỉ cần đổi biến `BOSS_ADMIN_PASSWORD` trong Hostinger Docker Manager rồi Redeploy → app tự đặt lại mật khẩu về giá trị mới. App ghi nhớ giá trị env đã áp dụng nên KHÔNG đè mật khẩu bạn tự đổi trong app (chỉ áp dụng lại khi env thực sự đổi). Sửa lại hướng dẫn "Quên mật khẩu?" ở màn đăng nhập cho đúng bản Docker (bỏ hướng dẫn stop-boss.bat/start-boss.vbs kiểu Windows local).
+
+## [1.0.10] - 2026-07-09
+### Sửa lỗi
+- **Ô nhập chat ở màn hẹp/PC: placeholder xuống dòng + hiện nút ▲▼ trắng**: placeholder dài bị wrap 2 dòng làm nội dung textarea cao hơn 1 dòng → trình duyệt hiện thanh cuộn dọc (nút mũi tên trắng). Nay ẩn thanh cuộn của ô nhập (vẫn cuộn được bằng lăn chuột) + placeholder giữ 1 dòng (nowrap, cắt gọn khi hẹp) + min-width:0 để co giãn đúng.
+
+## [1.0.9] - 2026-07-09
+### Sửa lỗi
+- **Thông báo "chưa cài Claude Code CLI / chưa kết nối model" lặp vô tận như loop**: trước đây khi mở app mà chưa có model nào, server gửi lỗi rồi ĐÓNG socket ngay lúc connect; client tự reconnect sau 3 giây → cứ 3s lại một dòng lỗi. Nay bỏ chặn-đóng-socket lúc connect, chỉ báo 1 lần KHI người dùng gửi tin (nếu engine rơi về CLI mà CLI chưa cài), và không cần CLI nếu đang dùng OpenRouter/OpenAI/ChatGPT. Client cũng chống lặp bong bóng lỗi giống hệt nhau liên tiếp.
+
 ## [1.0.8] - 2026-07-08
 ### Sửa lỗi
 - **Nhãn graph vẫn vỡ font sau khi fix NFC ở server**: bổ sung chuẩn hoá NFC ngay tại client (lúc `graph3d.load()` nhận data + lúc vẽ concept label) → nhãn tiếng Việt hiển thị đúng dù server/trình duyệt còn trả NFD (thêm `cache:no-store` cho `/graph` để không dính cache cũ). Đồng thời vá `_node_payload` (nguồn node realtime qua WebSocket) — trước đó chưa chuẩn hoá nên node thêm realtime vẫn NFD (vỡ font + mất cạnh nối).

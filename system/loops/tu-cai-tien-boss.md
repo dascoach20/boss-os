@@ -1,13 +1,13 @@
 ---
 type: loop
-name: Tự cải tiến Boss
+name: Tự cải tiến Boss OS
 slug: tu-cai-tien-boss
 enabled: false
 mode: suggest
 interval_min: 720
 updated: {today}
 ---
-Đóng vai người cải tiến Boss. Mỗi vòng làm ĐÚNG các bước sau rồi dừng:
+Đóng vai người cải tiến Boss OS. Mỗi vòng làm ĐÚNG các bước sau rồi dừng:
 
 1. Rà nhanh: đọc log hội thoại gần đây (memory/conversations), các agent/workflow/skill/loop
    hiện có (Boss/agents, Boss/workflows, .claude/skills, Boss/loops), và nhật ký loop.

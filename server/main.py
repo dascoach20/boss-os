@@ -2,7 +2,7 @@
 Boss OS - Backend
 Kiến trúc: Voice (browser) ⇄ FastAPI WebSocket ⇄ Claude Code CLI subprocess
 
-Boss KHÔNG gọi Anthropic API trực tiếp. Mọi reasoning + tool calling đi qua
+Boss OS KHÔNG gọi Anthropic API trực tiếp. Mọi reasoning + tool calling đi qua
 `claude` CLI đã cài trên máy → tự kế thừa MCP, skills, auth.
 """
 import os
@@ -85,16 +85,16 @@ SYSTEM_PROMPT = CLAUDE_MD_PATH.read_text(encoding="utf-8") if CLAUDE_MD_PATH.exi
 
 # Bộ nhớ dài hạn - lưu TRONG vault đang chọn để đi theo vault
 MEMORY_SEED = (
-    "# Bộ nhớ Boss - Index\n\n"
-    "> Chỉ mục bộ nhớ dài hạn của Boss. Mỗi dòng = 1 ký ức, trỏ tới file trong `facts/`.\n"
-    "> Nội dung file này được nạp vào đầu mỗi câu hỏi để Boss nhớ ngữ cảnh.\n\n"
-    "_(Chưa có ký ức nào. Boss sẽ học dần sau mỗi hội thoại.)_\n"
+    "# Bộ nhớ Boss OS - Index\n\n"
+    "> Chỉ mục bộ nhớ dài hạn của Boss OS. Mỗi dòng = 1 ký ức, trỏ tới file trong `facts/`.\n"
+    "> Nội dung file này được nạp vào đầu mỗi câu hỏi để Boss OS nhớ ngữ cảnh.\n\n"
+    "_(Chưa có ký ức nào. Boss OS sẽ học dần sau mỗi hội thoại.)_\n"
 )
 
 def _atomic_write_text(path, content: str, encoding: str = "utf-8"):
     """Ghi file nguyên tử: viết ra .tmp cùng thư mục → fsync → os.replace.
 
-    Mặc định write_text() ghi trực tiếp; nếu Boss crash hoặc mất điện
+    Mặc định write_text() ghi trực tiếp; nếu Boss OS crash hoặc mất điện
     giữa chừng, file (loop_config.json, automations.json, memory .md...)
     sẽ bị cắt cụt → JSON corrupt / frontmatter hỏng. Pattern port từ
     hermes-agent/utils.py:atomic_replace - bảo đảm reader luôn thấy bản
@@ -142,7 +142,7 @@ def _brain_memory_dir(brain: str) -> Path:
     return mem
 
 def build_system_prompt(brain: str = "brain") -> str:
-    """CLAUDE.md + nạp MEMORY.md của vault đang chọn → Boss luôn nhớ ngữ cảnh."""
+    """CLAUDE.md + nạp MEMORY.md của vault đang chọn → Boss OS luôn nhớ ngữ cảnh."""
     base = CLAUDE_MD_PATH.read_text(encoding="utf-8") if CLAUDE_MD_PATH.exists() else ""
     idx = _brain_memory_dir(brain) / "MEMORY.md"
     mem = ""
@@ -153,7 +153,7 @@ def build_system_prompt(brain: str = "brain") -> str:
         mem = ""
     if mem.strip():
         base += "\n\n# === BỘ NHỚ DÀI HẠN (nạp sẵn) ===\n" + mem
-    # Đường dẫn lớp Agentic của vault đang làm việc (để Boss tạo agent/workflow/loop qua chat)
+    # Đường dẫn lớp Agentic của vault đang làm việc (để Boss OS tạo agent/workflow/loop qua chat)
     root = _brain_root(brain)
     system_sync.ensure_synced(root)   # brain nào cũng có đủ năng lực hệ thống (1 lần/process, rẻ)
     ag, wf = _agents_dir(brain), _workflows_dir(brain)
@@ -169,7 +169,7 @@ def build_system_prompt(brain: str = "brain") -> str:
         "ĐƯỜNG DẪN TUYỆT ĐỐI ở trên. Studio/trang Tự cải thiện sẽ tự nhận file mới."
     )
     try:
-        base += _boss_capability_summary(brain)   # chỉ mục năng lực LIVE (mọi engine biết Boss có gì)
+        base += _boss_capability_summary(brain)   # chỉ mục năng lực LIVE (mọi engine biết Boss OS có gì)
     except Exception:
         pass
     # Luật văn phong BẮT BUỘC: không bao giờ dùng gạch ngang dài trong câu trả lời.
@@ -242,7 +242,7 @@ def _redact_secrets(text: str) -> str:
 # Cap kích thước mỗi message khi ghi conversation log - port head/tail truncation
 # từ hermes-agent/agent/prompt_builder.py::_truncate_content. conversations/*.md là
 # "nguyên liệu để học" (rewire đọc lại) VÀ bị git commit; user paste 1 source dài
-# hoặc Boss trả báo cáo dài → log phình, rewire tốn token, repo nặng. Giữ đầu +
+# hoặc Boss OS trả báo cáo dài → log phình, rewire tốn token, repo nặng. Giữ đầu +
 # đuôi (đủ ngữ cảnh để học), bỏ giữa, ghi rõ đã cắt bao nhiêu ký tự.
 _LOG_MSG_MAX_CHARS = 4000
 _LOG_HEAD_CHARS = 2800
@@ -266,7 +266,7 @@ def log_conversation(brain: str, user_msg: str, boss_msg: str):
         f = conv / f"{now.strftime('%Y-%m-%d')}.md"
         u = _clip_for_log(_redact_secrets(user_msg))
         j = _clip_for_log(_redact_secrets(boss_msg))
-        entry = f"\n## {now.strftime('%H:%M')}\n**Bạn:** {u}\n\n**Boss:** {j}\n"
+        entry = f"\n## {now.strftime('%H:%M')}\n**Bạn:** {u}\n\n**Boss OS:** {j}\n"
         with open(f, "a", encoding="utf-8") as fh:
             fh.write(entry)
     except Exception as e:
@@ -595,7 +595,7 @@ def _hub_enabled():
 
 
 async def _api_stream_mcp(prov, key, model, messages, reasoning="off", brain=None):
-    """Model API/OAuth dùng MCP của Boss qua HUB: đa tài khoản + quyền + audit + builtin tools
+    """Model API/OAuth dùng MCP của Boss OS qua HUB: đa tài khoản + quyền + audit + builtin tools
     (file vault, use_skill) → engine API cũng là agent thực thụ. anthropic-api giờ CÓ tool loop.
     ChatGPT OAuth (backend Codex responses) không nhận function tool → vẫn chat thuần."""
     tools, route = [], {}
@@ -643,7 +643,7 @@ def _toml_str(s):
 
 
 def _write_codex_profile():
-    """Ghi ~/.codex/boss.config.toml → `codex exec -p boss` thấy MCP của Boss.
+    """Ghi ~/.codex/boss.config.toml → `codex exec -p boss` thấy MCP của Boss OS.
     Hub bật (mặc định): 1 entry hub - Codex dùng được MỌI transport (cả stdio/internal) + đa tài
     khoản + quyền. Hub tắt: per-server http như cũ. Trả 'boss' nếu có server, None nếu rỗng."""
     if _hub_enabled():
@@ -678,7 +678,7 @@ def _write_codex_profile():
 
 
 def _apply_mcp(cli, mode="full"):
-    """Gắn MCP do Boss quản lý vào 1 ClaudeCLI (registry rỗng → không đổi gì, dùng MCP sẵn của máy).
+    """Gắn MCP do Boss OS quản lý vào 1 ClaudeCLI (registry rỗng → không đổi gì, dùng MCP sẵn của máy).
     Hub bật: config 1 entry trỏ hub kèm X-Boss-Mode - deny/perm/audit chặn TẠI hub (lớp cứng),
     không cần --disallowedTools. Hub tắt: per-server + --disallowedTools như cũ."""
     try:
@@ -760,7 +760,7 @@ def claude_logout():
     return claude_auth_logout()
 
 
-# ---- MCP do Boss quản lý (engine Claude Code) ----
+# ---- MCP do Boss OS quản lý (engine Claude Code) ----
 @app.get("/mcp/list")
 async def mcp_list():
     return {"servers": mcp_store.list_servers(),
@@ -942,7 +942,7 @@ async def connect_zalo_cancel(request: Request):
     return zalo_login.cancel(data.get("sid"))
 
 
-# ---- OAuth chuẩn MCP: Boss tự giữ token, không cần terminal ----
+# ---- OAuth chuẩn MCP: Boss OS tự giữ token, không cần terminal ----
 @app.post("/connect/oauth/start")
 async def connect_oauth_start(request: Request):
     data = await request.json()
@@ -996,7 +996,7 @@ async def connect_oauth_callback(state: str = Query(""), code: str = Query("")):
         except Exception as e:
             print(f"[oauth label] {e}")
         html = ("<html><body style='font-family:sans-serif;background:#111;color:#eee;text-align:center;padding-top:80px'>"
-                "<h2>✓ Đã kết nối thành công</h2><p>Đóng tab này và quay lại Boss, bấm Làm mới ở trang Kết nối.</p></body></html>")
+                "<h2>✓ Đã kết nối thành công</h2><p>Đóng tab này và quay lại Boss OS, bấm Làm mới ở trang Kết nối.</p></body></html>")
     else:
         html = (f"<html><body style='font-family:sans-serif;background:#111;color:#eee;text-align:center;padding-top:80px'>"
                 f"<h2>⚠ Kết nối thất bại</h2><p>{res.get('error', '')}</p></body></html>")
@@ -1362,7 +1362,7 @@ _METRICS_TTL = float(os.getenv("METRICS_TTL", "180"))   # giây
 @app.get("/metrics")
 async def metrics(fresh: int = Query(0, description="1 = bỏ cache, gọi mới")):
     """
-    Số liệu động - Boss tự phát hiện MCP đang kết nối và trả về các card
+    Số liệu động - Boss OS tự phát hiện MCP đang kết nối và trả về các card
     phù hợp (kinh doanh và/hoặc cuộc sống). Không hardcode ngành nào.
     Có cache TTL: F5 liên tục không gọi lại Claude.
     """
@@ -1374,7 +1374,7 @@ async def metrics(fresh: int = Query(0, description="1 = bỏ cache, gọi mới
 
     cli = ClaudeCLI(system_prompt=SYSTEM_PROMPT, cwd=CLAUDE_CWD, tag="metrics")
     cli.model = _aux_model() or None   # việc nền: dùng model phụ nếu có cấu hình
-    _apply_mcp(cli)   # metrics cần MCP (POS/ads) - dùng server Boss quản lý nếu có
+    _apply_mcp(cli)   # metrics cần MCP (POS/ads) - dùng server Boss OS quản lý nếu có
     if not cli.is_available():
         return {"error": "Claude CLI chưa cài", "cards": []}
 
@@ -1689,18 +1689,18 @@ async def ingest_upload(
                 "folder": os.path.basename(sources)}
     return {"ok": False, "error": "Không tạo được .md", "raw": final[:200]}
 
-# Cấu trúc chuẩn Boss - kiểm tra khi mở vault
+# Cấu trúc chuẩn Boss OS - kiểm tra khi mở vault
 # detect: regex khớp tên folder top-level (linh hoạt "06 - Sources" / "Sources")
 STANDARD_STRUCTURE = [
     # Nội dung người dùng đưa vào - nguồn lưu trữ (source of truth)
     {"key": "sources", "label": "sources", "kind": "dir", "detect": r"^(\d+\s*[-_.]\s*)?sources$", "create": "sources", "essential": True},
-    # Lớp vận hành Boss (alt = vị trí cũ chưa migrate → không báo thiếu nhầm)
+    # Lớp vận hành Boss OS (alt = vị trí cũ chưa migrate → không báo thiếu nhầm)
     {"key": "agents", "label": "agents", "kind": "dir", "detect": r"^agents$", "alt": "Boss/agents", "create": "agents", "essential": True},
     {"key": "workflows", "label": "workflows", "kind": "dir", "detect": r"^workflows$", "alt": "Boss/workflows", "create": "workflows", "essential": True},
     {"key": "memory", "label": "memory", "kind": "dir", "detect": r"^memory$", "alt": "Memory", "create": "memory", "essential": True},
     # Skill KHÔNG phải folder top-level: sống ở .claude/skills/<skill>/SKILL.md (Claude Code native),
     # chia nhóm bằng field `group` trong frontmatter. Nên không liệt kê ở đây.
-    # Tuỳ chọn - Boss chưng cất source → wiki (nuôi graph); đính kèm ảnh/file
+    # Tuỳ chọn - Boss OS chưng cất source → wiki (nuôi graph); đính kèm ảnh/file
     {"key": "wiki", "label": "wiki", "kind": "dir", "detect": r"^(\d+\s*[-_.]\s*)?wiki$", "create": "wiki", "essential": False},
     {"key": "attachments", "label": "attachments", "kind": "dir", "detect": r"^(\d+\s*[-_.]\s*)?attachments$", "create": "attachments", "essential": False},
 ]
@@ -1734,17 +1734,17 @@ def _check_structure(root: Path):
     return items
 
 BOSS_README = (
-    "# Boss\n\nLớp điều phối của Boss OS trong vault này.\n\n"
+    "# Boss OS\n\nLớp điều phối của Boss OS trong vault này.\n\n"
     "- `agents/` - các Agent (vai trò + skills + bộ nhớ riêng)\n"
     "- `workflows/` - quy trình nhiều agent (status active/off)\n"
     "- Skills dùng chung ở `.claude/skills/`\n"
 )
 SCHEMA_SEED = (
-    "# AGENTS.md - Vault Schema (Boss)\n\n"
+    "# AGENTS.md - Vault Schema (Boss OS)\n\n"
     "> Vault này hoạt động với Boss OS. Cấu trúc:\n\n"
     "- `06 - Sources/` - ghi chú thô (source of truth)\n"
     "- `07 - Wiki/` - tri thức đã chưng cất, có `[[wikilink]]`\n"
-    "- `Memory/` - bộ nhớ dài hạn của Boss (facts + conversations)\n"
+    "- `Memory/` - bộ nhớ dài hạn của Boss OS (facts + conversations)\n"
     "- `Boss/` - agents + workflows\n\n"
     "Nguyên lý: Sources → (ingest) → Wiki. Tri thức tích luỹ, không tái phát hiện.\n"
 )
@@ -1797,7 +1797,7 @@ def _ensure_brain_scaffold(root):
 
 def _ensure_default_brain():
     """Seed brain mặc định (<BRAINS_DIR>/Brain Default) lúc khởi động → deploy mới có ngay 'bộ não
-    Boss khởi đầu', không hiện banner 'cấu trúc chưa chuẩn'."""
+    Boss OS khởi đầu', không hiện banner 'cấu trúc chưa chuẩn'."""
     try:
         _ensure_brain_scaffold(_default_brain_dir())
     except Exception as e:
@@ -1862,7 +1862,7 @@ async def vault_check(brain: str = Query("brain")):
 
 @app.post("/vault/init")
 async def vault_init(brain: str = Form("brain")):
-    """Tạo các mục cấu trúc còn thiếu để vault chạy với Boss. Dùng CHUNG scaffold với brain
+    """Tạo các mục cấu trúc còn thiếu để vault chạy với Boss OS. Dùng CHUNG scaffold với brain
     mới tạo (đủ bộ: cấu trúc + memory seed + schema/wiki nav + năng lực HỆ THỐNG + index) →
     vault ngoài chọn qua path: cũng có đầy đủ chức năng mặc định, không còn bản seed thiếu."""
     root = Path(_brain_root(brain))
@@ -2386,7 +2386,7 @@ async def execute_workflow(brain, slug, input="", tools=None):
         if model and _is_codex_model(model) and tools is None and find_codex_cli():
             openai_oauth.write_codex_auth()   # bắc cầu token ChatGPT → ~/.codex/auth.json
             cc = CodexCLI(cwd=vault_root, tag="workflow", model=_codex_safe_model(model), instructions=sysprompt)
-            cc.profile = _write_codex_profile()   # đẩy MCP của Boss (POS...) sang codex
+            cc.profile = _write_codex_profile()   # đẩy MCP của Boss OS (POS...) sang codex
             return cc
         c = ClaudeCLI(system_prompt=sysprompt, cwd=vault_root, tag="workflow", allowed_tools=tools)
         # Model Claude của AGENT (sonnet/opus/haiku/fable) được ÁP THẬT vào CLI.
@@ -2852,7 +2852,7 @@ async def automations_sync(brain: str = Form("brain")):
 
 # ============================================================
 # BOSS INDEX - chỉ mục tầng vận hành (agents/skills/workflows/loops/automations).
-# Song song wiki/index.md: để MỌI engine (Claude/Codex/OpenRouter) đọc 1 chỗ là hiểu Boss
+# Song song wiki/index.md: để MỌI engine (Claude/Codex/OpenRouter) đọc 1 chỗ là hiểu Boss OS
 # có năng lực gì. SINH TỪ FILE (không sửa tay) → không bao giờ lệch. Ghi Boss/index.md CHỈ KHI
 # nội dung đổi (change-gated → không churn git). Bản LIVE gọn được chèn vào system prompt.
 # ============================================================
@@ -2908,9 +2908,9 @@ def _gather_capabilities(brain: str) -> dict:
 def _render_boss_index(caps: dict) -> str:
     n_on_loops = sum(1 for l in caps["loops"] if l["enabled"])
     n_on_wf = sum(1 for w in caps["workflows"] if w["status"] == "active")
-    L = ["# Boss Index (tầng vận hành)", "",
-         "> Tự sinh từ file - ĐỪNG sửa tay. Chỉ mục mọi năng lực của Boss trong brain này để bất kỳ "
-         "AI/engine đọc 1 chỗ là hiểu Boss làm được gì. Song song `wiki/index.md` (tri thức).", "",
+    L = ["# Boss OS Index (tầng vận hành)", "",
+         "> Tự sinh từ file - ĐỪNG sửa tay. Chỉ mục mọi năng lực của Boss OS trong brain này để bất kỳ "
+         "AI/engine đọc 1 chỗ là hiểu Boss OS làm được gì. Song song `wiki/index.md` (tri thức).", "",
          f"**Tổng quan:** {len(caps['agents'])} agents · {len(caps['skills'])} skills · "
          f"{len(caps['workflows'])} workflows ({n_on_wf} bật) · {len(caps['loops'])} loops ({n_on_loops} bật) · "
          f"{len(caps['automations'])} lịch", ""]
@@ -2990,7 +2990,7 @@ def rebuild_boss_index(brain: str) -> dict:
 
 
 def _boss_capability_summary(brain: str) -> str:
-    """Bản LIVE gọn (capped) chèn vào system prompt: để engine nào cũng biết Boss có gì.
+    """Bản LIVE gọn (capped) chèn vào system prompt: để engine nào cũng biết Boss OS có gì.
     Skill nhiều -> chỉ đếm + nhóm (chi tiết ở Boss/index.md), tránh phình context."""
     try:
         c = _gather_capabilities(brain)
@@ -3039,7 +3039,7 @@ async def _start_scheduler():
         if cfgmod.setup_token_required():
             _tok = cfgmod.get_or_create_setup_token()
             print("\n" + "=" * 66 +
-                  "\n  [BẢO MẬT] Boss chạy PUBLIC, CHƯA có tài khoản admin."
+                  "\n  [BẢO MẬT] Boss OS chạy PUBLIC, CHƯA có tài khoản admin."
                   "\n  Mở app → màn tạo tài khoản sẽ hỏi MÃ THIẾT LẬP dưới đây:"
                   f"\n      SETUP TOKEN:  {_tok}"
                   "\n  (Chỉ người xem được log/terminal này tạo được admin. Hoặc đặt"
@@ -3078,7 +3078,7 @@ async def _start_scheduler():
                             await asyncio.to_thread(_do_backup)   # 1 lần: toàn bộ thư mục brains, 2 chiều
                 except Exception as be:
                     print(f"[backup tick] {type(be).__name__}: {be}", file=__import__('sys').stderr)
-                # 5) Boss index: dựng lại chỉ mục tầng vận hành (chỉ ghi khi đổi → không churn)
+                # 5) Boss OS index: dựng lại chỉ mục tầng vận hành (chỉ ghi khi đổi → không churn)
                 try:
                     for _ib in loop_feature.scheduler_brains():
                         await asyncio.to_thread(rebuild_boss_index, _ib)
@@ -3149,7 +3149,7 @@ async def config():
 # ============================================
 # Phiên bản + cập nhật trong UI
 # ============================================
-GITHUB_REPO = "dascoach20/boss-os"
+GITHUB_REPO = "pham-dai-2000/boss-os"
 _UPDATE_TASKS = set()   # giữ ref mạnh cho asyncio.create_task (tránh GC nuốt mất task)
 
 
@@ -3702,14 +3702,9 @@ async def websocket_endpoint(ws: WebSocket):
     except Exception:
         pass
 
-    if not cli.is_available():
-        await ws.send_text(json.dumps({
-            "type": "error",
-            "content": "Claude Code CLI chưa được cài. Chạy: npm install -g @anthropic-ai/claude-code"
-        }))
-        await ws.close()
-        return
-
+    # KHÔNG chặn/đóng socket lúc connect nếu CLI chưa cài: engine chọn theo từng tin nhắn
+    # (có thể dùng OpenRouter/OpenAI/ChatGPT, không cần CLI). Nếu rơi về CLI mà chưa cài thì
+    # báo 1 lần TRONG vòng lặp tin nhắn (xem dưới), tránh close -> client reconnect 3s -> spam lỗi.
     or_messages = None   # lịch sử chat cho engine API (seed lại từ DB khi resume)
     store = get_store()
     conv_sid = None      # id phiên hội thoại (KHÁC cli.session_id của Claude)
@@ -3740,6 +3735,15 @@ async def websocket_endpoint(ws: WebSocket):
                             else prov if ((kind == "api" and api_key) or kind == "oauth")
                             else "cli")
 
+            # Chưa kết nối model AI nào (engine rơi về CLI) mà CLI chưa cài → báo 1 lần rồi bỏ qua lượt.
+            # KHÔNG đóng socket → client không reconnect → không spam thông báo như loop.
+            if engine_label == "cli" and not cli.is_available():
+                await ws.send_text(json.dumps({
+                    "type": "error",
+                    "content": "Chưa kết nối model AI nào. Vào mục Models để đăng nhập Claude Code, hoặc chọn OpenRouter / OpenAI / ChatGPT. (Muốn dùng Claude Code CLI thì cài: npm install -g @anthropic-ai/claude-code)"
+                }))
+                continue
+
             # ── Phiên hội thoại: resume-or-create (session_id ở đây là CONV id) ──
             incoming_sid = payload.get("session_id")
             if conv_sid is None:
@@ -3757,7 +3761,7 @@ async def websocket_endpoint(ws: WebSocket):
                 "content": "Boss đang suy nghĩ..."
             }))
 
-            # Nạp bộ nhớ của vault đang chọn vào system prompt (Boss luôn nhớ)
+            # Nạp bộ nhớ của vault đang chọn vào system prompt (Boss OS luôn nhớ)
             # + block kênh (port gateway hermes): engine biết đang trả lời qua dashboard web
             sysprompt = build_system_prompt(brain) + channel_context.build_channel_block(
                 "dashboard", telegram_running=bool(_TG_BOT), port=_boss_port())
@@ -3775,7 +3779,7 @@ async def websocket_endpoint(ws: WebSocket):
                         print(f"[codex model self-heal] {_e}", file=__import__('sys').stderr)
                 openai_oauth.write_codex_auth()   # bắc cầu token đã nối ở Models → ~/.codex/auth.json (codex dùng được)
                 ccli = CodexCLI(cwd=CLAUDE_CWD, model=actual_model, tag=conn_tag)
-                ccli.profile = _write_codex_profile()   # đẩy MCP của Boss (POSCake...) sang codex
+                ccli.profile = _write_codex_profile()   # đẩy MCP của Boss OS (POSCake...) sang codex
                 if not ccli.is_available():
                     await ws.send_text(json.dumps({"type": "error", "content": "Chưa cài Codex CLI trong container. ChatGPT subscription là THỬ NGHIỆM - dùng Claude Code hoặc OpenRouter cho ổn định (đổi ở Models)."}))
                 else:
@@ -3830,7 +3834,7 @@ async def websocket_endpoint(ws: WebSocket):
                 # ===== PROVIDER anthropic-cli - qua Claude Code, đầy đủ MCP / skill / session =====
                 cli.system_prompt = sysprompt
                 cli.model = api_model or mcfg.get("claude_model") or None   # alias opus/sonnet/haiku/fable
-                _apply_mcp(cli)   # gắn MCP do Boss quản lý (nhiều shop POSCake...)
+                _apply_mcp(cli)   # gắn MCP do Boss OS quản lý (nhiều shop POSCake...)
                 async for event in cli.query(_cli_think(reasoning, user_message)):
                     etype = event["type"]
                     if etype == "tool_call":
@@ -3900,7 +3904,7 @@ async def sessions_delete(session_id: str):
 
 
 # ============================================================
-# Telegram bot - nhắn Telegram ↔ Boss (dùng engine theo Settings; CLI thì có cả MCP)
+# Telegram bot - nhắn Telegram ↔ Boss OS (dùng engine theo Settings; CLI thì có cả MCP)
 # ============================================================
 _TG_BOT = None
 # ĐA PHIÊN theo tài khoản: mỗi chat_id giữ NGỮ CẢNH RIÊNG để không lẫn hội thoại giữa
@@ -4018,7 +4022,7 @@ async def _tg_answer(text, meta=None):
 
 async def _tg_help_text(brain):
     return (
-        "🤖 Boss Telegram\n\n"
+        "🤖 Boss OS Telegram\n\n"
         "Lệnh:\n"
         "/status - engine, model, vault, trạng thái\n"
         "/skills - liệt kê skill\n"
@@ -4030,8 +4034,8 @@ async def _tg_help_text(brain):
         "/or - engine OpenRouter (chat thuần)\n"
         "/retry - gửi lại câu gần nhất\n"
         "/reset - hội thoại mới · /stop - dừng\n\n"
-        "Gửi tin thường để hỏi Boss. Gõ /tên-skill để gọi skill (cần engine Claude CLI).\n"
-        "Gửi file/ảnh vào đây để Boss đọc. File Boss tạo ra sẽ tự gửi lại cho bạn ở đây."
+        "Gửi tin thường để hỏi Boss OS. Gõ /tên-skill để gọi skill (cần engine Claude CLI).\n"
+        "Gửi file/ảnh vào đây để Boss OS đọc. File Boss OS tạo ra sẽ tự gửi lại cho bạn ở đây."
     )
 
 
@@ -4284,7 +4288,7 @@ async def _tg_command(cmd, arg, chat=None):
         prov, model = _model_current()
         busy = _tg_chat_busy(chat_key)
         bname = Path(_brain_root(brain)).name
-        return {"reply": ("📊 Trạng thái Boss\n"
+        return {"reply": ("📊 Trạng thái Boss OS\n"
                           f"Provider: {prov}\n"
                           f"Model: {model}\n"
                           f"Brain: {bname} (đổi bằng /brain)\n"
@@ -4404,7 +4408,7 @@ async def telegram_test():
             for cid in ids:
                 try:
                     r = await c.post(f"https://api.telegram.org/bot{t['token']}/sendMessage",
-                                     json={"chat_id": cid, "text": "✅ Boss Telegram đã kết nối. Nhắn câu hỏi bất kỳ nhé."})
+                                     json={"chat_id": cid, "text": "✅ Boss OS Telegram đã kết nối. Nhắn câu hỏi bất kỳ nhé."})
                     d = r.json()
                     if d.get("ok"):
                         sent += 1

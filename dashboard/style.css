@@ -382,7 +382,7 @@ body {
   min-height: clamp(280px, 46vh, 620px);
 }
 .transcript:empty::after {
-  content: "Nói hoặc gõ để bắt đầu hội thoại với Boss.";
+  content: "Nói hoặc gõ để bắt đầu hội thoại với Boss OS.";
   color: var(--text3); font-size: 14px; font-style: italic;
 }
 .msg { animation: fadeIn 0.2s ease; }
@@ -404,7 +404,7 @@ body {
 .msg-boss .bubble code { font-family: var(--font); font-size: 13px; background: var(--bg); padding: 1px 4px; border-radius: 3px; color: #a78bfa; }
 .msg-boss .bubble h3 { font-size: 15px; color: var(--text); margin: 8px 0 4px; }
 
-/* Copy tin nhắn Boss (nút cạnh bubble, hiện khi hover) */
+/* Copy tin nhắn Boss OS (nút cạnh bubble, hiện khi hover) */
 .msg-boss { display: flex; align-items: flex-start; gap: 6px; }
 .msg-boss .bubble { flex: 1; min-width: 0; }
 .msg-copy { flex: none; margin-top: 4px; background: none; border: 1px solid transparent;
@@ -511,13 +511,15 @@ body {
 }
 @keyframes micpulse-hf { 50% { box-shadow: 0 0 0 11px rgba(255,107,43,0); } }
 .voice-input {
-  flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  flex: 1; min-width: 0; background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
   color: var(--text); font-size: 14px; padding: 11px 14px; resize: none; outline: none;
   line-height: 1.4; max-height: 90px; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s;
+  overflow-x: hidden; scrollbar-width: none;   /* ẩn thanh cuộn (nút ▲▼ trắng ở màn hẹp) - vẫn cuộn được */
 }
+.voice-input::-webkit-scrollbar { display: none; }
 .voice-input:hover { border-color: var(--accent); }
 .voice-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232,168,92,0.18); }
-.voice-input::placeholder { color: var(--text3); }
+.voice-input::placeholder { color: var(--text3); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .send-btn {
   background: var(--accent); border: none; color: white; width: 44px; height: 44px;
   border-radius: 12px; cursor: pointer; flex-shrink: 0;

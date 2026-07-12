@@ -1,5 +1,5 @@
 """
-MCP client của Boss - để MỌI bộ não (API/OAuth lẫn hub) dùng được MCP.
+MCP client của Boss OS - để MỌI bộ não (API/OAuth lẫn hub) dùng được MCP.
 v2: SESSION POOL sống lâu giữa các tin nhắn (hết cảnh mỗi tool call mở session mới),
 thêm transport stdio (MCP local như zalo-agent-cli, webcake-landing-mcp) và
 "internal" (cầu nối Python nội bộ như botcake_mcp).
@@ -165,7 +165,7 @@ class McpStdioSession:
         self._init_done = False
 
     def _argv(self):
-        # Tìm cả trong Scripts/bin của venv Boss: uvx/uv cài theo requirements nằm ở đó
+        # Tìm cả trong Scripts/bin của venv Boss OS: uvx/uv cài theo requirements nằm ở đó
         # (PATH hệ thống thường không có) → connector PyPI (uvx ...) chạy được out-of-the-box.
         venv_bin = str(Path(sys.executable).parent)
         search = venv_bin + os.pathsep + os.environ.get("PATH", "")
@@ -234,7 +234,7 @@ class McpStdioSession:
                 continue   # noise (log npx...) → bỏ qua
             if obj.get("id") == msg["id"]:
                 return obj
-            # notification/request từ server → bỏ qua (Boss không hỗ trợ sampling)
+            # notification/request từ server → bỏ qua (Boss OS không hỗ trợ sampling)
 
     async def ensure_init(self):
         async with self._lock:

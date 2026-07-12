@@ -9,7 +9,7 @@ import hashlib
 import secrets
 from pathlib import Path
 
-# Mọi state Boss tự ghi (settings, auth sessions, loop config) nằm ở BOSS_STATE_DIR.
+# Mọi state Boss OS tự ghi (settings, auth sessions, loop config) nằm ở BOSS_STATE_DIR.
 # Mặc định = server/ (không đổi trên máy cũ). Docker/VPS đặt = /data/state (volume ghi được,
 # vì code tree /app là read-only trong container).
 STATE_DIR = Path(os.getenv("BOSS_STATE_DIR", str(Path(__file__).parent)))
@@ -81,8 +81,8 @@ _DEFAULT = {
         # Frontend cũng tự ép lite-mode khi màn hình hẹp dù cờ này bật.
         "graph_enabled": True,
     },
-    # MCP do Boss quản lý (registry connection ở mcp_servers.json). strict=True → CHỈ dùng
-    # kết nối của Boss (--strict-mcp-config), bỏ qua config MCP sẵn có của máy.
+    # MCP do Boss OS quản lý (registry connection ở mcp_servers.json). strict=True → CHỈ dùng
+    # kết nối của Boss OS (--strict-mcp-config), bỏ qua config MCP sẵn có của máy.
     # hub=True (mặc định): mọi engine đấu qua MCP HUB (1 entry "boss" - đa tài khoản, quyền,
     # audit tại hub). Đặt false để về chế độ cũ (per-server) nếu gặp sự cố.
     "mcp": {"strict": False, "hub": True},
@@ -121,7 +121,7 @@ def auth_enabled(cfg=None):
 
 
 def require_login():
-    """Có BẮT BUỘC đăng nhập để dùng Boss không (kể cả khi CHƯA đặt mật khẩu → ép setup).
+    """Có BẮT BUỘC đăng nhập để dùng Boss OS không (kể cả khi CHƯA đặt mật khẩu → ép setup).
     - BOSS_REQUIRE_LOGIN=1/0 ép bật/tắt tường minh.
     - Mặc định: BẬT khi server nghe public (BOSS_HOST=0.0.0.0, vd Docker/Hostinger/VPS) -
       vì Claude chạy full quyền, không được để hở ai cũng vào được."""
@@ -250,17 +250,39 @@ def clear_setup_token():
         pass
 
 
+_ADMIN_ENV_SIG_PATH = STATE_DIR / ".admin_env_sig2"   # đổi tên → bỏ qua marker 1.0.11 bị kẹt
+
+
 def provision_admin_from_env():
-    """Có BOSS_ADMIN_PASSWORD (+ tùy chọn BOSS_ADMIN_USER) và CHƯA có admin → tạo admin lúc boot
-    → đóng /auth/setup cho mọi người (cách an toàn nhất cho deploy public). Trả True nếu vừa tạo."""
-    if auth_enabled():
-        return False
+    """Áp dụng tài khoản admin từ biến môi trường BOSS_ADMIN_PASSWORD (+ tùy chọn BOSS_ADMIN_USER).
+    Dùng cho cả TẠO admin lần đầu lẫn ĐẶT LẠI mật khẩu (quên): chỉ cần đổi BOSS_ADMIN_PASSWORD trong
+    Docker Manager rồi Redeploy → app tự đặt lại, KHÔNG cần terminal.
+      - Chưa có admin → tạo.
+      - Giá trị env ĐỔI so với lần áp dụng trước → áp dụng lại (reset mật khẩu về giá trị env mới).
+      - Env KHÔNG đổi → không đụng gì (giữ nguyên mật khẩu bạn đã tự đổi trong app).
+    Trả True nếu vừa áp dụng."""
     pw = os.getenv("BOSS_ADMIN_PASSWORD", "")
     if not pw:
         return False
     user = (os.getenv("BOSS_ADMIN_USER", "admin").strip() or "admin")
+    sig = hashlib.sha256((user + "\x00" + pw).encode("utf-8")).hexdigest()
+    try:
+        last = _ADMIN_ENV_SIG_PATH.read_text(encoding="utf-8").strip()
+    except Exception:
+        last = ""
+
+    # Đã có admin VÀ giá trị env y hệt lần áp dụng trước → không đụng (giữ mật khẩu đã đổi trong app).
+    if auth_enabled() and sig == last:
+        return False
+    # Còn lại (chưa có admin, HOẶC env khác lần trước, KỂ CẢ lần đầu chưa có marker) → áp dụng.
+    # Nghĩa là: đặt BOSS_ADMIN_PASSWORD rồi Redeploy là mật khẩu về đúng giá trị đó (tạo mới hoặc reset).
+
     h, salt = hash_password(pw)
     cfg = read_settings()
     cfg["auth"] = {"username": user, "password_hash": h, "salt": salt}
     write_settings(cfg)
+    try:
+        _ADMIN_ENV_SIG_PATH.write_text(sig, encoding="utf-8")
+    except Exception:
+        pass
     return True

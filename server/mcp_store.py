@@ -1,5 +1,5 @@
 """
-Registry KẾT NỐI MCP của Boss - model v2: connector (mẫu, xem mcp_catalog) ↔ connection (tài khoản).
+Registry KẾT NỐI MCP của Boss OS - model v2: connector (mẫu, xem mcp_catalog) ↔ connection (tài khoản).
 - File: STATE_DIR/mcp_servers.json (v2). Bản v1 (danh sách server phẳng) tự MIGRATE khi đọc lần đầu,
   bản gốc backup sang mcp_servers.v1.bak.json - không phá dữ liệu cũ.
 - Secret (headers/env/fields) mã hoá at rest qua secrets_store.

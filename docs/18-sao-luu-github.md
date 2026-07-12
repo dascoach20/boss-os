@@ -8,7 +8,7 @@ Mở tại: trang **Tự học** (thanh bên trái), kéo xuống mục **⇅ Đ
 
 ## Vì sao nên bật
 
-Brain là toàn bộ tri thức Boss tích luỹ được về bạn và công việc. Nó nằm trên đĩa máy/VPS. Nếu chỉ có một bản, một sự cố là mất sạch. Đồng bộ với GitHub cho bạn:
+Brain là toàn bộ tri thức Boss OS tích luỹ được về bạn và công việc. Nó nằm trên đĩa máy/VPS. Nếu chỉ có một bản, một sự cố là mất sạch. Đồng bộ với GitHub cho bạn:
 
 - Bản sao ngoài, an toàn khi máy hỏng.
 - Lịch sử từng lần thay đổi (xem lại, khôi phục điểm cũ).
@@ -38,7 +38,7 @@ Brain là toàn bộ tri thức Boss tích luỹ được về bạn và công v
 4. **Permissions** → Repository permissions → **Contents** → chọn **Read and write**.
 5. Bấm Generate, **copy token** (dạng `github_pat_...`). Token chỉ hiện 1 lần - copy ngay.
 
-### Bước 3 - Dán vào Boss
+### Bước 3 - Dán vào Boss OS
 
 1. Mở trang **Tự học** → mục **Đồng bộ brain với GitHub**.
 2. Dán **URL repo** và **token** vào ô tương ứng.
@@ -55,7 +55,7 @@ Mỗi lượt đồng bộ làm 4 việc theo thứ tự:
 1. **Chụp** thư mục brains vào một bản sao sạch (bỏ file nhạy cảm + git thô của từng brain) và ghi nhận thay đổi của máy này.
 2. **Kéo về** bản mới nhất trên GitHub và **hoà nhập**: file khác nhau thì tự ghép; hai máy cùng sửa MỘT file thì **bản sửa mới hơn thắng**, bản thua được giữ nguyên thành file `.conflict-<local|remote>-<thời điểm>` ngay cạnh để bạn tự quyết; một bên sửa một bên xoá thì bản sửa thắng (không âm thầm mất dữ liệu).
 3. **Áp kết quả** về thư mục brains của máy (file vừa sửa tay ngay trong lúc đồng bộ sẽ không bị đè - máy giữ bản của bạn, vòng sau tự hoà tiếp).
-4. **Đẩy lên** GitHub (đẩy thường, KHÔNG force). Nếu máy khác vừa đẩy chen ngang, Boss tự kéo về hoà tiếp rồi đẩy lại.
+4. **Đẩy lên** GitHub (đẩy thường, KHÔNG force). Nếu máy khác vừa đẩy chen ngang, Boss OS tự kéo về hoà tiếp rồi đẩy lại.
 
 Ghi chú an toàn của cơ chế:
 
@@ -66,7 +66,7 @@ Ghi chú an toàn của cơ chế:
 
 ## Khôi phục brain trên máy mới
 
-Không cần thao tác git tay: cài Boss, vào **Tự học → Đồng bộ brain với GitHub**, dán repo + token, bấm **⇅ Đồng bộ ngay** - toàn bộ brain về lại đủ. (Cách cũ `git clone` thẳng vào thư mục brains vẫn dùng được.)
+Không cần thao tác git tay: cài Boss OS, vào **Tự học → Đồng bộ brain với GitHub**, dán repo + token, bấm **⇅ Đồng bộ ngay** - toàn bộ brain về lại đủ. (Cách cũ `git clone` thẳng vào thư mục brains vẫn dùng được.)
 
 ## Xử lý file .conflict-*
 
@@ -80,7 +80,7 @@ Khi hai máy sửa cùng một file giữa hai lần đồng bộ, bạn sẽ th
 
 - **Luôn dùng repo Private.** Brain có thể chứa số liệu kinh doanh, tên khách hàng, đôi khi cả khoá bạn lỡ dán trong hội thoại.
 - Token nên đặt thời hạn và chỉ cấp quyền **Contents** cho đúng repo đó - không cấp rộng hơn.
-- Một repo dùng cho MỘT bộ brains. Đừng trỏ 2 hệ thống Boss khác mục đích (dữ liệu khác nhau hoàn toàn) vào cùng repo - chúng sẽ trộn dữ liệu vào nhau đúng như thiết kế sync.
+- Một repo dùng cho MỘT bộ brains. Đừng trỏ 2 hệ thống Boss OS khác mục đích (dữ liệu khác nhau hoàn toàn) vào cùng repo - chúng sẽ trộn dữ liệu vào nhau đúng như thiết kế sync.
 
 ## Sự cố thường gặp
 

@@ -60,7 +60,7 @@ def is_git_checkout(root: str) -> bool:
 
 
 _GITIGNORE = (
-    "# Boss brain - KHÔNG commit: khoá, log thô (có thể chứa secret), nhật ký nền.\n"
+    "# Boss OS brain - KHÔNG commit: khoá, log thô (có thể chứa secret), nhật ký nền.\n"
     "# Git chỉ version TRI THỨC ĐÃ CHƯNG CẤT (facts/wiki/skills/MEMORY.md) → undo sạch, an toàn.\n"
     ".boss-learn.lock\n"
     "Boss/learn-staging/\n"

@@ -16,11 +16,11 @@ Nâng cấp từ loop ĐƠN (loop_config.json) thành hệ N loop:
     auto_paused_reason trong state (không sửa file .md của user) + ghi log + báo Telegram
     nếu deps.notify được tiêm. Bật lại / bấm Run now sẽ xoá pause.
 
-Triết lý MỖI VÒNG giữ nguyên bản gốc: Boss tự thức theo lịch, làm ĐÚNG MỘT việc cụ thể,
+Triết lý MỖI VÒNG giữ nguyên bản gốc: Boss OS tự thức theo lịch, làm ĐÚNG MỘT việc cụ thể,
 tự kiểm chứng độc lập (mode=auto, giả định kết quả SAI), ghi log Boss/loop-log/.
 
 An toàn theo tools_profile:
-  - "vault-safe" (MẶC ĐỊNH): file tools + MCP do Boss quản lý (POS/ads/lịch...) - loop ĐỌC
+  - "vault-safe" (MẶC ĐỊNH): file tools + MCP do Boss OS quản lý (POS/ads/lịch...) - loop ĐỌC
     được dữ liệu thật để làm việc. cwd ghim vault. Bash/WebFetch/WebSearch/Task NGOÀI allowlist
     → bị chặn. Chống hành động tiền/đơn qua MCP bằng 3 lớp: (a) deny_tools per-server của MCP
     (apply_mcp gắn --disallowedTools), (b) chỉ dẫn CỨNG trong prompt (_MCP_SAFETY: đọc OK,
@@ -568,7 +568,7 @@ class LoopFeature:
                     "hoặc ghi 1 note đề xuất cải tiến UX/tính năng vào '05 - Projects'. Báo cáo NGẮN: cải tiến gì, file nào, vì sao."
                 ), ""
             return base + (
-                "CHẾ ĐỘ ĐỀ XUẤT - chỉ đọc, không ghi. Liệt kê 3-5 cải tiến giá trị nhất để Boss hữu dụng hơn (mỗi cái 1 dòng + lý do)."
+                "CHẾ ĐỘ ĐỀ XUẤT - chỉ đọc, không ghi. Liệt kê 3-5 cải tiến giá trị nhất để Boss OS hữu dụng hơn (mỗi cái 1 dòng + lý do)."
             ), ""
         if goal == "custom":
             objective = (loop.get("body") or "").strip() or "Cải thiện vault theo cách hữu ích nhất bạn thấy."
@@ -594,7 +594,7 @@ class LoopFeature:
         """Dựng CLI cho 1 vòng loop.
         - profile 'code' (nâng cao, chỉ đặt qua .md): Bash/Web + file, cwd=workspace, VẪN 0 MCP
           (fail-closed nếu không tạo được file MCP rỗng) - cho loop sửa mã repo.
-        - MẶC ĐỊNH (mọi loop tạo qua form): file tools + MCP do Boss quản lý (POS/ads/lịch...).
+        - MẶC ĐỊNH (mọi loop tạo qua form): file tools + MCP do Boss OS quản lý (POS/ads/lịch...).
           Loop ĐỌC được dữ liệu thật; ghi allowlist kèm 'mcp__<server>' để tool MCP gọi được.
           An toàn tiền/đơn dựa vào: (a) deny_tools per-server (apply_mcp gắn --disallowedTools),
           (b) chỉ dẫn cứng trong prompt, (c) mode suggest = chỉ tool đọc.

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/static/style.css?v=150">
+  <link rel="stylesheet" href="/static/style.css?v=151">
   <link rel="stylesheet" href="/static/console.css?v=123">
 </head>
 <body>
@@ -488,8 +488,13 @@
         <div class="auth-err" id="authErr"></div>
         <div class="auth-help"><span id="authForgot">Quên mật khẩu?</span></div>
         <div class="auth-reset" id="authResetInfo" style="display:none">
-          Mở file <code>server/settings.json</code>, xóa khối <code>"auth"</code> (hoặc đặt rỗng), rồi
-          chạy <code>stop-boss.bat</code> → <code>start-boss.vbs</code>. Mở lại sẽ về bộ cài đặt để tạo tài khoản mới.
+          <b>Đặt lại mật khẩu (không cần terminal):</b>
+          <ol style="margin:6px 0 4px 18px;padding:0">
+            <li>Vào <b>Hostinger → Docker Manager</b> → dự án <code>boss-os</code> → <b>Manage / Environment</b>.</li>
+            <li>Đổi giá trị biến <code>BOSS_ADMIN_PASSWORD</code> thành mật khẩu mới (đặt cả <code>BOSS_ADMIN_USER</code> nếu muốn đổi tên).</li>
+            <li>Bấm <b>Redeploy</b>, đợi 1-2 phút. Xong đăng nhập bằng mật khẩu mới.</li>
+          </ol>
+          <span class="dim">Chạy local (không Docker): mở <code>server/settings.json</code>, xoá khối <code>"auth"</code> rồi khởi động lại server → về bộ cài đặt tạo tài khoản mới.</span>
         </div>
       </div>
     </div>
@@ -564,7 +569,7 @@
   <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
   <script src="https://unpkg.com/3d-force-graph@1.73.4/dist/3d-force-graph.min.js"></script>
   <script src="/static/graph3d.js?v=120"></script>
-  <script src="/static/app.js?v=156"></script>
+  <script src="/static/app.js?v=157"></script>
   <script src="/static/branding.js?v=106"></script>
   <script src="/static/quick-settings.js?v=103"></script>
   <script src="/static/chat-zoom.js?v=104"></script>

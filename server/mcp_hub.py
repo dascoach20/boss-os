@@ -207,7 +207,7 @@ def _builtin_tools(mode, vault_root):
                       "schema": {"type": "object", "properties": props, "required": required}})
         route[name] = {"call": call}
 
-    add("boss_connections", "Liệt kê các nguồn dữ liệu (connector/tài khoản MCP) đang đấu vào Boss, "
+    add("boss_connections", "Liệt kê các nguồn dữ liệu (connector/tài khoản MCP) đang đấu vào Boss OS, "
         "kèm mức quyền. Dùng khi cần biết đang có nguồn nào / tài khoản nào là mặc định.",
         {}, [], lambda args: _async_const(_connections_json()))
 
@@ -433,7 +433,7 @@ def _toml_str(s):
 
 
 def codex_profile(mode="full"):
-    """Ghi ~/.codex/boss.config.toml 1 entry hub → `codex exec -p boss` thấy MỌI MCP của Boss."""
+    """Ghi ~/.codex/boss.config.toml 1 entry hub → `codex exec -p boss` thấy MỌI MCP của Boss OS."""
     path = Path.home() / ".codex" / "boss.config.toml"
     try:
         if not _has_connections():

@@ -9,7 +9,7 @@ services:
       context: .
       args:
         CLAUDE_CLI_VERSION: ${CLAUDE_CLI_VERSION:-latest}
-    image: ghcr.io/dascoach20/boss-os:latest
+    image: ghcr.io/pham-dai-2000/boss-os:latest
     container_name: boss
     restart: unless-stopped
     env_file:

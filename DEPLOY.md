@@ -3,8 +3,8 @@
 Boss OS là một AI agent cá nhân + Second Brain. "Bộ não" của nó là **Claude Code CLI**
 (đăng nhập một lần, không cần API key). Có 3 cách chạy - chọn 1.
 
-> ⚠️ **An toàn:** Boss chạy Claude với toàn quyền trên máy. Khi chạy public (Docker/VPS/Hostinger),
-> Boss **tự bật bắt buộc đăng nhập** - mở app ra là màn **tạo tài khoản admin / đăng nhập**, không
+> ⚠️ **An toàn:** Boss OS chạy Claude với toàn quyền trên máy. Khi chạy public (Docker/VPS/Hostinger),
+> Boss OS **tự bật bắt buộc đăng nhập** - mở app ra là màn **tạo tài khoản admin / đăng nhập**, không
 > ai điều khiển được khi chưa đặt mật khẩu. (Chạy nội bộ muốn tắt: `BOSS_REQUIRE_LOGIN=0`.)
 
 ---
@@ -13,7 +13,7 @@ Boss OS là một AI agent cá nhân + Second Brain. "Bộ não" của nó là *
 
 VPS Hostinger → **Docker Manager → Compose → URL** → dán link rồi **Deploy**:
 ```
-https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.yml
+https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.yml
 ```
 Hostinger pull image + chạy. Mở app bằng `http://<ip-vps>:7777` (IP xem ở hPanel → VPS) → ra
 màn **tạo tài khoản admin**.
@@ -42,7 +42,7 @@ màn **tạo tài khoản admin**.
 Cần Docker. Chưa có? `curl -fsSL https://get.docker.com | sh`
 ```bash
 mkdir boss && cd boss
-curl -fsSLO https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.yml
+curl -fsSLO https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.yml
 
 docker compose run --rm boss claude auth login --claudeai   # ĐĂNG NHẬP CLAUDE 1 LẦN (link + code)
 docker compose up -d                                          # pull image GHCR + chạy
@@ -53,7 +53,7 @@ Muốn build từ source thay vì pull: `curl -O .../docker-compose.build.yml` r
 
 Lệnh hằng ngày:
 ```bash
-docker compose logs -f     # xem Boss đang làm gì
+docker compose logs -f     # xem Boss OS đang làm gì
 docker compose restart     # khởi động lại
 docker compose down        # tắt
 docker compose build --pull && docker compose up -d   # cập nhật
@@ -85,7 +85,7 @@ link riêng chạy HTTPS mà không cần mua tên miền. **Lưu ý (đã kiể
 1. Xem **hostname VPS** ở hPanel → VPS (vd `srv1782015.hstgr.cloud`).
 2. Docker Manager → Compose → URL:
    ```
-   https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.hostinger.yml
+   https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.hostinger.yml
    ```
 3. Ô **Environment** (Biến môi trường) đặt **`DOMAIN_NAME=boss.<hostname-vps>.hstgr.cloud`**
    (vd `DOMAIN_NAME=boss.srv1782015.hstgr.cloud`). Muốn tên miền RIÊNG (vd `bossos.com`) thì đặt tên miền đó + trỏ DNS A về IP VPS.
@@ -119,11 +119,11 @@ Không cần đặt `DOMAIN` lúc chạy nữa - bật Caddy một lần rồi k
 
 ### 🌐 Truy cập từ xa (Hostinger / VPS bất kỳ) - Cloudflare Tunnel
 
-Mở giao diện Boss từ máy khác mà KHÔNG cần mở port / không cần tên miền - như Hermes:
+Mở giao diện Boss OS từ máy khác mà KHÔNG cần mở port / không cần tên miền - như Hermes:
 
-1. **Đặt mật khẩu TRƯỚC (bắt buộc):** mở Boss (qua SSH tunnel ở bước 5) → Dashboard → **Tài khoản** → đặt mật khẩu admin. Boss chạy Claude toàn quyền trên máy → TUYỆT ĐỐI không phơi ra Internet khi chưa có mật khẩu. (Server cũng in cảnh báo nếu chạy public mà chưa đặt.)
+1. **Đặt mật khẩu TRƯỚC (bắt buộc):** mở Boss OS (qua SSH tunnel ở bước 5) → Dashboard → **Tài khoản** → đặt mật khẩu admin. Boss OS chạy Claude toàn quyền trên máy → TUYỆT ĐỐI không phơi ra Internet khi chưa có mật khẩu. (Server cũng in cảnh báo nếu chạy public mà chưa đặt.)
 2. Bật tunnel: `docker compose --profile tunnel up -d`
-3. Lấy URL: `docker compose logs tunnel | grep trycloudflare` → mở `https://<ngẫu-nhiên>.trycloudflare.com` trên trình duyệt bất kỳ, đăng nhập mật khẩu. Giờ xem & thao tác Boss từ xa.
+3. Lấy URL: `docker compose logs tunnel | grep trycloudflare` → mở `https://<ngẫu-nhiên>.trycloudflare.com` trên trình duyệt bất kỳ, đăng nhập mật khẩu. Giờ xem & thao tác Boss OS từ xa.
 
 **URL cố định (tên miền riêng, kiểu `*.hstgr.cloud`):** tạo *named tunnel* ở Cloudflare Zero Trust (miễn phí) → lấy token → `TUNNEL_TOKEN=...` vào `.env` → đổi dòng `command` của service `tunnel` sang bản `run --token` (comment sẵn trong `docker-compose.yml`), trỏ tới `http://boss:7777`. Quick tunnel đổi URL mỗi lần restart; named tunnel cho URL ổn định.
 
@@ -132,7 +132,7 @@ Mở giao diện Boss từ máy khác mà KHÔNG cần mở port / không cần 
 ## Cách 2 - Cài trực tiếp lên Linux/macOS (không Docker)
 
 ```bash
-git clone https://github.com/dascoach20/boss-os.git boss && cd boss
+git clone https://github.com/pham-dai-2000/boss-os.git boss && cd boss
 chmod +x install.sh && ./install.sh
 ```
 
@@ -158,7 +158,7 @@ Dừng bằng `stop-boss.bat`. Mở http://localhost:7777
 |---|---|---|
 | `BOSS_HOST` | Địa chỉ nghe. `127.0.0.1` = chỉ máy này; `0.0.0.0` = mọi nơi (Docker tự đặt) | `127.0.0.1` |
 | `BOSS_PORT` | Cổng | `7777` |
-| `BOSS_STATE_DIR` | Nơi Boss ghi state (settings, sessions, loop config) | `server/` (Docker: `/data/state`) |
+| `BOSS_STATE_DIR` | Nơi Boss OS ghi state (settings, sessions, loop config) | `server/` (Docker: `/data/state`) |
 | `OBSIDIAN_VAULT_PATH` | Vault Second Brain chính | `vault/` trong repo (Docker: `/data/vault`) |
 | `BRAIN_PATH` | Thư mục brain | `brain/` trong repo (Docker: `/data/brain`) |
 | `CLAUDE_CWD` | Thư mục làm việc của Claude CLI | repo root |
@@ -171,7 +171,7 @@ Dừng bằng `stop-boss.bat`. Mở http://localhost:7777
 > phiên bản đang chạy + tự kiểm tra bản mới trên GitHub. Có bản mới → bấm **⬆ Cập nhật ngay**,
 > app tự kéo bản mới + khởi động lại (~20-40s), khỏi vào terminal.
 > - **Docker/VPS:** cần service **watchtower** (đã có sẵn trong `docker-compose.yml`). Chỉ Watchtower
->   được cấp quyền Docker (socket); app Boss KHÔNG → an toàn. Không muốn thì xoá service đó,
+>   được cấp quyền Docker (socket); app Boss OS KHÔNG → an toàn. Không muốn thì xoá service đó,
 >   nút sẽ chỉ *báo có bản mới* + hướng dẫn.
 > - **Native/Windows:** nút chạy `update.sh` (git pull + restart) giúp bạn.
 
@@ -201,7 +201,7 @@ Trên máy Windows của bạn, đẩy code lên GitHub: `git add -A && git comm
 
 ## Đăng nhập Claude là bước duy nhất bắt buộc
 
-"Bộ não" của Boss là Claude Code CLI. Token đăng nhập nằm trong `~/.claude`
+"Bộ não" của Boss OS là Claude Code CLI. Token đăng nhập nằm trong `~/.claude`
 (Docker: volume `claude-auth`). Đăng nhập 1 lần → tồn tại qua mọi restart/update.
 Nếu đã đăng nhập trên máy khác, có thể copy thư mục `~/.claude` sang.
 

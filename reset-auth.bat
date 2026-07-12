@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Reset dang nhap Boss
+title Reset dang nhap Boss OS
 cd /d "%~dp0"
 echo ==========================================
 echo   RESET DANG NHAP BOSS

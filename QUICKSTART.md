@@ -7,7 +7,7 @@ Chạy Boss OS trong vài phút. Chi tiết từng phần: [docs/](docs/README.m
 1. hPanel → VPS → **Docker Manager** → **Compose** → **Compose from URL**.
 2. Dán URL:
    ```
-   https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.hostinger.yml
+   https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.hostinger.yml
    ```
 3. (Tùy chọn, để có HTTPS + tên miền) ở ô **Environment** đặt:
    ```

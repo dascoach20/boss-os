@@ -1,20 +1,20 @@
 # Kênh Telegram
 
-Bật bot Telegram để hỏi Boss ngay từ điện thoại, không cần mở dashboard. Bạn nhắn cho bot như nhắn cho một người, Boss trả lời bằng chính bộ não và bộ nhớ đang chạy trên máy/VPS của bạn.
+Bật bot Telegram để hỏi Boss OS ngay từ điện thoại, không cần mở dashboard. Bạn nhắn cho bot như nhắn cho một người, Boss OS trả lời bằng chính bộ não và bộ nhớ đang chạy trên máy/VPS của bạn.
 
 ## Tính năng này là gì
 
-- Bạn tạo một bot Telegram riêng (miễn phí), dán token vào Boss, giới hạn chỉ tài khoản của bạn được dùng.
-- Sau khi bật, mọi tin nhắn thường bạn gửi cho bot sẽ được Boss trả lời. Bot cũng gõ "đang soạn" trong lúc suy nghĩ.
+- Bạn tạo một bot Telegram riêng (miễn phí), dán token vào Boss OS, giới hạn chỉ tài khoản của bạn được dùng.
+- Sau khi bật, mọi tin nhắn thường bạn gửi cho bot sẽ được Boss OS trả lời. Bot cũng gõ "đang soạn" trong lúc suy nghĩ.
 - Có sẵn các lệnh gõ nhanh (bắt đầu bằng dấu `/`) để xem trạng thái, đổi model, dừng câu đang chạy, bắt đầu hội thoại mới.
-- Nếu bạn dùng engine Claude (Claude Code) thì qua Telegram Boss vẫn có đủ MCP và skill: hỏi số liệu bán hàng, quảng cáo, đọc vault đều được. Nếu dùng engine OpenRouter thì chỉ là chat thuần, không có MCP.
+- Nếu bạn dùng engine Claude (Claude Code) thì qua Telegram Boss OS vẫn có đủ MCP và skill: hỏi số liệu bán hàng, quảng cáo, đọc vault đều được. Nếu dùng engine OpenRouter thì chỉ là chat thuần, không có MCP.
 - Trả lời chạy nền: đang trả lời câu này bạn vẫn gửi được `/stop` để cắt ngang.
 
 Xem thêm engine và model ở [Models & engine](10-models-va-engine.md), công cụ MCP ở [MCP & số liệu kinh doanh](09-mcp-va-so-lieu.md).
 
-## Mở ở đâu trong Boss
+## Mở ở đâu trong Boss OS
 
-1. Mở dashboard Boss (mặc định `http://localhost:7777`).
+1. Mở dashboard Boss OS (mặc định `http://localhost:7777`).
 2. Nhìn thanh điều hướng bên trái, bấm mục **Kênh**.
 3. Bạn sẽ thấy thẻ **Telegram** với các ô: bật/tắt bot, Bot token, Chat ID được phép dùng, và 2 nút **Lưu & bật** / **Gửi test**.
 
@@ -30,11 +30,11 @@ Xem thêm engine và model ở [Models & engine](10-models-va-engine.md), công 
 
 ### Lấy Chat ID của bạn (và của những người dùng chung)
 
-Chat ID là số định danh tài khoản Telegram. Boss dùng nó làm danh sách cho phép: chỉ những ID trong danh sách mới nhắn được với bot.
+Chat ID là số định danh tài khoản Telegram. Boss OS dùng nó làm danh sách cho phép: chỉ những ID trong danh sách mới nhắn được với bot.
 
 1. Trong Telegram tìm bot tên **@userinfobot** và mở chat, bấm Start.
 2. Nó trả về dòng `Id: 123456789`. Con số đó là **Chat ID** của bạn.
-3. Ghi lại con số này để dán vào Boss ở bước sau.
+3. Ghi lại con số này để dán vào Boss OS ở bước sau.
 
 Muốn cho người khác (vợ/chồng, nhân viên...) dùng chung bot: nhờ từng người làm đúng 2 bước trên để lấy Chat ID của họ, và nhớ mỗi người phải mở bot của bạn bấm **Start** một lần (Telegram chỉ cho bot nhắn với người đã Start).
 
@@ -48,7 +48,7 @@ Muốn cho người khác (vợ/chồng, nhân viên...) dùng chung bot: nhờ 
 4. Dán Chat ID vào ô **Chat ID được phép dùng**. Nhiều người dùng chung thì dán nhiều ID cách nhau dấu phẩy, ví dụ `123456789, 987654321`.
 5. Bấm **Lưu & bật**.
 
-Boss lưu cấu hình và tự khởi động lại bot ngay sau khi bấm Lưu (bạn không cần bấm nút riêng để restart). Dòng trạng thái dưới thẻ sẽ báo "Đã lưu, đang khởi động bot…" rồi tự cập nhật sau gần 2 giây.
+Boss OS lưu cấu hình và tự khởi động lại bot ngay sau khi bấm Lưu (bạn không cần bấm nút riêng để restart). Dòng trạng thái dưới thẻ sẽ báo "Đã lưu, đang khởi động bot…" rồi tự cập nhật sau gần 2 giây.
 
 ### Bước 2: Kiểm tra bot đã nhận tin
 
@@ -56,7 +56,7 @@ Dòng chữ nhỏ ngay dưới 2 nút là trạng thái thật của bot. Ý ngh
 
 | Dòng trạng thái | Nghĩa |
 |---|---|
-| 🟢 Bot đang nhận tin | Bot chạy tốt, nhắn cho bot là Boss trả lời |
+| 🟢 Bot đang nhận tin | Bot chạy tốt, nhắn cho bot là Boss OS trả lời |
 | ⚪ Bot CHƯA bật | Chưa tích "Bật bot Telegram" rồi Lưu |
 | ⚪ Chưa có bot token | Đã bật nhưng chưa dán token |
 | ⏳ Đang khởi động bot | Bot vừa được bật, chờ vài giây |
@@ -69,10 +69,10 @@ Lưu ý quan trọng: gửi test thành công KHÔNG có nghĩa bot đang nhận
 ### Bước 3: Gửi tin test (tùy chọn)
 
 1. Bấm nút **Gửi test**.
-2. Nếu token và Chat ID hợp lệ, Boss gửi vào chat Telegram của bạn một tin: "Boss Telegram đã kết nối. Nhắn câu hỏi bất kỳ nhé." Dòng trạng thái báo "Đã gửi tin test."
+2. Nếu token và Chat ID hợp lệ, Boss OS gửi vào chat Telegram của bạn một tin: "Boss Telegram đã kết nối. Nhắn câu hỏi bất kỳ nhé." Dòng trạng thái báo "Đã gửi tin test."
 3. Nếu chưa lưu đủ token và Chat ID, nút test báo thiếu cấu hình. Hãy Lưu & bật trước rồi thử lại.
 
-### Bước 4: Hỏi Boss qua Telegram
+### Bước 4: Hỏi Boss OS qua Telegram
 
 1. Mở chat với bot của bạn trên Telegram.
 2. Gõ một câu hỏi bất kỳ như đang chat bình thường, vd "Hôm nay có task gì cần làm?" hoặc "Tóm tắt vault giúp tôi".
@@ -105,17 +105,17 @@ Chi tiết cách gõ `/model`:
 
 ## MCP và skill qua Telegram
 
-- Khi engine là **Claude** (dùng `/cli` hoặc chọn provider Claude trong Models): qua Telegram Boss dùng được MCP và skill. Bạn có thể hỏi số liệu bán hàng, quảng cáo, đọc và ghi file trong vault, gọi skill bằng cú pháp `/tên-skill`.
+- Khi engine là **Claude** (dùng `/cli` hoặc chọn provider Claude trong Models): qua Telegram Boss OS dùng được MCP và skill. Bạn có thể hỏi số liệu bán hàng, quảng cáo, đọc và ghi file trong vault, gọi skill bằng cú pháp `/tên-skill`.
 - Khi engine là **OpenRouter** (dùng `/or`): chỉ chat thuần, không có MCP. Nếu bạn gõ một `/tên-skill` trong lúc đang ở OpenRouter, bot nhắc: "Skill cần engine Claude CLI. Gửi /cli để đổi, rồi /tên-skill lại."
-- Đổi engine ngay trong Telegram: gõ `/cli` để về Claude, `/or` để sang OpenRouter. Đổi ở đây cũng đổi luôn cho toàn hệ Boss (dashboard và bot dùng chung một cấu hình model).
+- Đổi engine ngay trong Telegram: gõ `/cli` để về Claude, `/or` để sang OpenRouter. Đổi ở đây cũng đổi luôn cho toàn hệ Boss OS (dashboard và bot dùng chung một cấu hình model).
 - Muốn dùng `/or` thì cần đã đặt OpenRouter key trong trang [Models & engine](10-models-va-engine.md); chưa có key bot sẽ nhắc.
 
 ## Giới hạn quyền: chỉ mình bạn dùng bot
 
-- Ô **Chat ID được phép dùng** chính là whitelist. Chỉ các tài khoản Telegram có ID trong danh sách mới nhắn được với bot. Người lạ nhắn vào sẽ nhận: "Bạn không có quyền dùng bot Boss này."
+- Ô **Chat ID được phép dùng** chính là whitelist. Chỉ các tài khoản Telegram có ID trong danh sách mới nhắn được với bot. Người lạ nhắn vào sẽ nhận: "Bạn không có quyền dùng bot Boss OS này."
 - Nếu để trống ô Chat ID: bất kỳ ai tìm ra bot đều dùng được. Không nên để trống, vì bot có thể chạm vào vault và số liệu của bạn. Luôn đặt ít nhất 1 Chat ID.
 - Cho thêm người dùng chung 1 bot: thêm Chat ID của họ vào ô, cách nhau dấu phẩy, rồi **Lưu & bật**. Nút **Gửi test** sẽ gửi tin thử tới TẤT CẢ ID và báo rõ ID nào lỗi (thường do người đó chưa bấm Start bot). Thông báo nền (vd loop tự tạm dừng) cũng gửi tới tất cả ID.
-- Mỗi người có **mạch hội thoại riêng**: ngữ cảnh của từng Chat ID tách biệt, không lẫn sang người khác, và hai người có thể nhắn cùng lúc mà không phải chờ nhau. `/reset` và `/stop` chỉ tác động phiên của chính người gõ. Tuy vậy tất cả vẫn **chung một vault và cùng quyền** (ai cũng đọc/ghi được dữ liệu, số liệu, brain của bạn) - chỉ thêm ID người bạn tin tưởng. Cần tách bạch hoàn toàn cả dữ liệu thì dựng Boss + bot riêng cho mỗi người.
+- Mỗi người có **mạch hội thoại riêng**: ngữ cảnh của từng Chat ID tách biệt, không lẫn sang người khác, và hai người có thể nhắn cùng lúc mà không phải chờ nhau. `/reset` và `/stop` chỉ tác động phiên của chính người gõ. Tuy vậy tất cả vẫn **chung một vault và cùng quyền** (ai cũng đọc/ghi được dữ liệu, số liệu, brain của bạn) - chỉ thêm ID người bạn tin tưởng. Cần tách bạch hoàn toàn cả dữ liệu thì dựng Boss OS + bot riêng cho mỗi người.
 
 ## Kiểm tra trạng thái bot
 
@@ -128,7 +128,7 @@ Ngoài ra thẻ **Tổng quan** cũng hiện nhanh Telegram đang Bật hay Tắ
 
 ## Mẹo
 
-- Đổi token hay Chat ID xong luôn bấm lại **Lưu & bật**; Boss tự khởi động lại bot theo cấu hình mới, không cần thao tác gì thêm.
+- Đổi token hay Chat ID xong luôn bấm lại **Lưu & bật**; Boss OS tự khởi động lại bot theo cấu hình mới, không cần thao tác gì thêm.
 - Câu trả lời quá dài Telegram tự cắt thành nhiều tin nhắn liên tiếp, đọc bình thường.
 - Muốn hỏi một chủ đề mới hoàn toàn, không dính ngữ cảnh cũ, gõ `/reset` trước.
 - Bot lỡ trả lời lan man hoặc bạn hỏi nhầm, gõ `/stop` để cắt, rồi `/retry` nếu muốn hỏi lại câu vừa rồi.
@@ -136,13 +136,13 @@ Ngoài ra thẻ **Tổng quan** cũng hiện nhanh Telegram đang Bật hay Tắ
 
 ## Sự cố thường gặp
 
-**Dòng trạng thái báo 🔴 409.** Cùng một bot token đang được chạy ở nơi khác (một bản Boss khác, một máy khác, hoặc còn webhook cũ). Một token chỉ được chạy ở đúng 1 nơi. Bot Boss tự xóa webhook khi khởi động; nếu vẫn 409 thì hãy tắt bản Boss kia hoặc tạo bot token mới bằng BotFather. Sau khi xử lý, bấm **Lưu & bật** lại.
+**Dòng trạng thái báo 🔴 409.** Cùng một bot token đang được chạy ở nơi khác (một bản Boss OS khác, một máy khác, hoặc còn webhook cũ). Một token chỉ được chạy ở đúng 1 nơi. Bot Boss OS tự xóa webhook khi khởi động; nếu vẫn 409 thì hãy tắt bản Boss OS kia hoặc tạo bot token mới bằng BotFather. Sau khi xử lý, bấm **Lưu & bật** lại.
 
 **Bấm Gửi test báo thiếu token hoặc Chat ID.** Bạn chưa lưu đủ. Điền cả token và Chat ID, bấm **Lưu & bật** rồi mới Gửi test.
 
 **Gửi test thành công nhưng nhắn cho bot không thấy trả lời.** Test và nhận tin là hai việc khác nhau. Kiểm tra dòng trạng thái có phải 🟢 **Bot đang nhận tin** không. Nếu đang ⚪ hoặc 🔴, xử lý theo dòng đó (bật lại, hoặc sửa lỗi 409).
 
-**Nhắn cho bot bị trả lời "Bạn không có quyền dùng bot Boss này."** Chat ID bạn đặt trong Boss không khớp tài khoản đang nhắn. Lấy lại Chat ID đúng bằng @userinfobot, dán vào ô Chat ID rồi Lưu & bật.
+**Nhắn cho bot bị trả lời "Bạn không có quyền dùng bot Boss OS này."** Chat ID bạn đặt trong Boss OS không khớp tài khoản đang nhắn. Lấy lại Chat ID đúng bằng @userinfobot, dán vào ô Chat ID rồi Lưu & bật.
 
 **Gõ `/tên-skill` bị báo cần engine Claude CLI.** Bạn đang ở engine OpenRouter. Gõ `/cli` để chuyển về Claude rồi gọi lại skill.
 

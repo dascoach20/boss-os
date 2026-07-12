@@ -16,7 +16,7 @@
 /* Header (.hud-top) thành thanh top TOÀN CỤC: luôn nằm trên cùng, cview quản lý bắt đầu dưới nó.
    .hud render sẵn phía sau → header (row 52px đầu) lộ ra; z-index để chắc chắn nổi trên cview. */
 .hud-top { position: relative; z-index: 45; }
-/* Nút điều khiển trợ lý (⚙ voice 🔊 ↻) chỉ thuộc cockpit Boss → ẩn khi đang ở trang quản lý */
+/* Nút điều khiển trợ lý (⚙ voice 🔊 ↻) chỉ thuộc cockpit Boss OS → ẩn khi đang ở trang quản lý */
 body.in-console .hud-actions { display: none; }
 
 /* ===== Rail (sidebar dọc, kính mờ) ===== */

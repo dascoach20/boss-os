@@ -341,7 +341,7 @@ class ClaudeCLI:
         self.tag = tag                      # nhóm để ngắt chọn lọc
         self.allowed_tools = allowed_tools  # None = mọi tool; list = CHỈ các tool này (an toàn cho loop)
         self.model = model                  # None = model mặc định của CLI; hoặc sonnet/opus/haiku
-        self.mcp_config: Optional[str] = None   # path file --mcp-config (MCP do Boss quản lý)
+        self.mcp_config: Optional[str] = None   # path file --mcp-config (MCP do Boss OS quản lý)
         self.mcp_strict: bool = False           # True → --strict-mcp-config (bỏ qua MCP sẵn của máy)
         self.disallowed_tools: Optional[list] = None  # pattern --disallowedTools (server chỉ-đọc)
         self.max_wall_s: Optional[float] = None  # trần wall-clock (giây) cho fork nền; None = không cap
@@ -572,7 +572,7 @@ class CodexCLI:
         self.model = model              # gpt-5.5 / gpt-5.4 ...
         self.instructions = instructions
         self.extra_config = []          # list '-c key=value' (override config, vd thêm mcp_servers)
-        self.profile = None             # tên profile codex (-p) - Boss ghi boss.config.toml để thêm MCP
+        self.profile = None             # tên profile codex (-p) - Boss OS ghi boss.config.toml để thêm MCP
 
     def is_available(self) -> bool:
         return self.cli_path is not None

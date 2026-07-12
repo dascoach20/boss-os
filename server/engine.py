@@ -495,7 +495,7 @@ async def openai_responses_stream(access_token, account_id, model, messages, rea
 
 
 # ============================================================
-# MCP đa-model - vòng tool-calling để model API/OAuth dùng MCP của Boss (qua mcp_client)
+# MCP đa-model - vòng tool-calling để model API/OAuth dùng MCP của Boss OS (qua mcp_client)
 # ============================================================
 def _clip_tool_result(result, max_chars: int = 8000, head_ratio: float = 0.6) -> str:
     """Cắt kết quả tool quá dài kiểu head+tail KÈM marker, thay cho hard-cut `[:max]`.

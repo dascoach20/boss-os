@@ -1,5 +1,5 @@
 """
-Telegram bot cho Boss - long-polling getUpdates, whitelist theo chat_id (MỘT hoặc NHIỀU ID).
+Telegram bot cho Boss OS - long-polling getUpdates, whitelist theo chat_id (MỘT hoặc NHIỀU ID).
 - Trả lời chạy ở BACKGROUND task → vẫn nhận /stop giữa chừng.
 - Lệnh /...: command_fn(cmd, arg, chat) -> {"reply": str} | {"ask": str} | None
   (chat = chat_id người gõ → /reset //stop /retry chỉ tác động PHIÊN của họ).
@@ -246,7 +246,7 @@ class TelegramBot:
             name = f"photo_{msg.get('message_id')}.jpg"
             fsize = big.get("file_size") or 0
         elif media_khac:
-            return _with_cap("[Người dùng gửi voice/audio/video qua Telegram - Boss chưa đọc được "
+            return _with_cap("[Người dùng gửi voice/audio/video qua Telegram - Boss OS chưa đọc được "
                              "loại này. Hãy lịch sự nhờ user gõ chữ hoặc gửi dạng file tài liệu.]")
         else:
             return None
@@ -348,7 +348,7 @@ class TelegramBot:
                         if not chat:
                             continue
                         if self.chat_ids and chat not in self.chat_ids:
-                            await self._send(client, chat, "Bạn không có quyền dùng bot Boss này.")
+                            await self._send(client, chat, "Bạn không có quyền dùng bot Boss OS này.")
                             continue
                         text = (msg.get("text") or "").strip()
                         if not text:
@@ -386,7 +386,7 @@ class TelegramBot:
                     await self._send(client, chat, res["reply"], res.get("reply_markup"))
                     return
                 if res and "ask" in res:
-                    text = res["ask"]   # chuyển thành câu hỏi cho Boss
+                    text = res["ask"]   # chuyển thành câu hỏi cho Boss OS
                 # res None → coi như tin thường (gửi nguyên text)
         # Tin thường → chạy nền. Tuần tự THEO CHAT: chỉ chặn nếu chính chat này đang bận.
         if self._busy(chat):

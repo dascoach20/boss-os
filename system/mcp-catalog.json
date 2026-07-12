@@ -21,7 +21,7 @@
             "header": "Authorization: Bearer {api_key}"
           }
         ],
-        "guide": "Mở Pancake POS > Cấu hình cửa hàng > Ứng dụng & API > tạo API key, rồi dán vào đây. Boss sẽ tự kiểm tra và lấy tên cửa hàng.",
+        "guide": "Mở Pancake POS > Cấu hình cửa hàng > Ứng dụng & API > tạo API key, rồi dán vào đây. Boss OS sẽ tự kiểm tra và lấy tên cửa hàng.",
         "guide_url": "https://docs.pancake.biz/pos/st-f13/st-p2?lang=vi"
       },
       "validate": {
@@ -60,7 +60,7 @@
       "auth": {
         "type": "qr",
         "fields": [],
-        "guide": "Bấm Kết nối rồi quét mã QR bằng app Zalo trên điện thoại (Zalo > biểu tượng QR góc trên). Cần Node.js 20+ trên máy chạy Boss.",
+        "guide": "Bấm Kết nối rồi quét mã QR bằng app Zalo trên điện thoại (Zalo > biểu tượng QR góc trên). Cần Node.js 20+ trên máy chạy Boss OS.",
         "guide_url": "https://github.com/PhucMPham/zalo-agent-cli"
       },
       "tool_meta": {
@@ -68,7 +68,7 @@
         "danger": ["*send*"]
       },
       "default_perm": "full",
-      "risk": "Zalo KHÔNG hỗ trợ chính thức công cụ này (API không chính thức qua zca-js). Tài khoản của bạn CÓ THỂ bị Zalo hạn chế hoặc KHOÁ, nhất là khi gửi tin tự động số lượng lớn. Khuyến nghị dùng tài khoản phụ. Quyền GỬI TIN đang bật - Boss chỉ gửi khi bạn yêu cầu trực tiếp trong chat; loop chạy nền không bao giờ được tự gửi.",
+      "risk": "Zalo KHÔNG hỗ trợ chính thức công cụ này (API không chính thức qua zca-js). Tài khoản của bạn CÓ THỂ bị Zalo hạn chế hoặc KHOÁ, nhất là khi gửi tin tự động số lượng lớn. Khuyến nghị dùng tài khoản phụ. Quyền GỬI TIN đang bật - Boss OS chỉ gửi khi bạn yêu cầu trực tiếp trong chat; loop chạy nền không bao giờ được tự gửi.",
       "rate_limit": { "calls_per_min": 20 }
     },
     {
@@ -118,7 +118,7 @@
       "name": "Botcake",
       "icon": "/static/logos/botcake.png",
       "category": "Nhắn tin",
-      "description": "Khách hàng, tag, flow và gửi tin từ chatbot Botcake (qua Public API - Boss tự dựng cầu nối, không cần cài gì thêm).",
+      "description": "Khách hàng, tag, flow và gửi tin từ chatbot Botcake (qua Public API - Boss OS tự dựng cầu nối, không cần cài gì thêm).",
       "status": "beta",
       "transport": "internal",
       "internal": "botcake",
@@ -248,7 +248,7 @@
             "optional": true
           }
         ],
-        "guide": "Làm 1 lần (~10 phút): console.cloud.google.com > tạo project > bật Gmail API, Calendar API, Drive API, Docs API > OAuth consent screen (External, thêm email mình vào Test users) > Credentials > Create OAuth client ID (Desktop app) > copy Client ID + Secret vào đây. LẦN ĐẦU Boss gọi tool Google, trình duyệt trên máy chạy Boss sẽ mở để bạn bấm đồng ý quyền - làm trên máy có màn hình.",
+        "guide": "Làm 1 lần (~10 phút): console.cloud.google.com > tạo project > bật Gmail API, Calendar API, Drive API, Docs API > OAuth consent screen (External, thêm email mình vào Test users) > Credentials > Create OAuth client ID (Desktop app) > copy Client ID + Secret vào đây. LẦN ĐẦU Boss OS gọi tool Google, trình duyệt trên máy chạy Boss OS sẽ mở để bạn bấm đồng ý quyền - làm trên máy có màn hình.",
         "guide_url": "https://github.com/taylorwilsdon/google_workspace_mcp"
       },
       "tool_meta": {
@@ -256,7 +256,7 @@
         "danger": ["*send*", "*delete*"]
       },
       "default_perm": "safe",
-      "risk": "Mức Toàn quyền cho phép Boss GỬI EMAIL THẬT và XOÁ file/thư/lịch bằng tài khoản Google của bạn. Mức Ghi nháp (mặc định) chỉ soạn nháp, tạo lịch, tạo tài liệu - an toàn hơn."
+      "risk": "Mức Toàn quyền cho phép Boss OS GỬI EMAIL THẬT và XOÁ file/thư/lịch bằng tài khoản Google của bạn. Mức Ghi nháp (mặc định) chỉ soạn nháp, tạo lịch, tạo tài liệu - an toàn hơn."
     },
     {
       "id": "meta-ads",
@@ -284,7 +284,7 @@
         "danger": ["ads_create_*", "ads_update_entity", "ads_activate_entity"]
       },
       "default_perm": "readonly",
-      "risk": "Mức Toàn quyền cho phép Boss tạo/sửa chiến dịch quảng cáo tiêu TIỀN THẬT trên tài khoản của bạn (chiến dịch tạo qua đây luôn ở trạng thái TẠM DỪNG, bạn phải tự bật trong Ads Manager). Chỉ cần xem số liệu thì giữ mức Chỉ đọc."
+      "risk": "Mức Toàn quyền cho phép Boss OS tạo/sửa chiến dịch quảng cáo tiêu TIỀN THẬT trên tài khoản của bạn (chiến dịch tạo qua đây luôn ở trạng thái TẠM DỪNG, bạn phải tự bật trong Ads Manager). Chỉ cần xem số liệu thì giữ mức Chỉ đọc."
     },
     {
       "id": "google-ads",
@@ -418,7 +418,7 @@
         "danger": ["delete_event"]
       },
       "default_perm": "readonly",
-      "risk": "Mức Ghi nháp cho phép Boss TẠO và SỬA sự kiện thật trên lịch của bạn (tiện để nhờ 'nhắc tôi gọi nhà cung cấp thứ 5'). Mức Toàn quyền thêm quyền XOÁ sự kiện. Chỉ cần xem lịch thì giữ mức Chỉ đọc."
+      "risk": "Mức Ghi nháp cho phép Boss OS TẠO và SỬA sự kiện thật trên lịch của bạn (tiện để nhờ 'nhắc tôi gọi nhà cung cấp thứ 5'). Mức Toàn quyền thêm quyền XOÁ sự kiện. Chỉ cần xem lịch thì giữ mức Chỉ đọc."
     },
     {
       "id": "gmail",
@@ -453,7 +453,7 @@
         "danger": []
       },
       "default_perm": "readonly",
-      "risk": "Mức Ghi nháp cho phép Boss SOẠN NHÁP thư và gắn/gỡ nhãn trong hộp thư của bạn. Server Gmail chính chủ không có tool gửi thẳng nên Boss không tự gửi được - luôn dừng ở bản nháp để bạn tự bấm gửi. Chỉ cần đọc/tìm thư thì giữ mức Chỉ đọc."
+      "risk": "Mức Ghi nháp cho phép Boss OS SOẠN NHÁP thư và gắn/gỡ nhãn trong hộp thư của bạn. Server Gmail chính chủ không có tool gửi thẳng nên Boss OS không tự gửi được - luôn dừng ở bản nháp để bạn tự bấm gửi. Chỉ cần đọc/tìm thư thì giữ mức Chỉ đọc."
     },
     {
       "id": "slack",
@@ -483,7 +483,7 @@
         "danger": ["*send*", "*post*", "*add_message*", "*create*", "*update*", "*archive*", "*upload*", "*invite*"]
       },
       "default_perm": "readonly",
-      "risk": "Mức Toàn quyền cho phép Boss GỬI TIN NHẮN THẬT và tạo/sửa canvas bằng tài khoản Slack của bạn. Chỉ cần đọc/tìm tin thì giữ mức Chỉ đọc. Lưu ý: tên tool chính xác của Slack MCP chưa công bố nên phân loại quyền dựa trên heuristic (mọi tool có động từ hành động bị coi là GHI và chặn ở mức Chỉ đọc); nếu một công cụ đọc bị chặn nhầm, nâng quyền hoặc báo lại để chỉnh."
+      "risk": "Mức Toàn quyền cho phép Boss OS GỬI TIN NHẮN THẬT và tạo/sửa canvas bằng tài khoản Slack của bạn. Chỉ cần đọc/tìm tin thì giữ mức Chỉ đọc. Lưu ý: tên tool chính xác của Slack MCP chưa công bố nên phân loại quyền dựa trên heuristic (mọi tool có động từ hành động bị coi là GHI và chặn ở mức Chỉ đọc); nếu một công cụ đọc bị chặn nhầm, nâng quyền hoặc báo lại để chỉnh."
     },
     {
       "id": "systeme-io",
@@ -512,7 +512,7 @@
         "danger": ["delete_*", "*_delete"]
       },
       "default_perm": "readonly",
-      "risk": "Mức Ghi nháp cho phép Boss TẠO/SỬA liên hệ, tag, newsletter, phễu thật trên Systeme.io. Mức Toàn quyền thêm quyền XOÁ. Chỉ cần xem dữ liệu thì giữ mức Chỉ đọc. Lưu ý: tên tool chính xác chưa công bố nên phân loại dựa trên heuristic (tool có động từ hành động bị coi là GHI, xoá là NGUY HIỂM); nếu công cụ đọc bị chặn nhầm ở mức Chỉ đọc, báo lại để chỉnh."
+      "risk": "Mức Ghi nháp cho phép Boss OS TẠO/SỬA liên hệ, tag, newsletter, phễu thật trên Systeme.io. Mức Toàn quyền thêm quyền XOÁ. Chỉ cần xem dữ liệu thì giữ mức Chỉ đọc. Lưu ý: tên tool chính xác chưa công bố nên phân loại dựa trên heuristic (tool có động từ hành động bị coi là GHI, xoá là NGUY HIỂM); nếu công cụ đọc bị chặn nhầm ở mức Chỉ đọc, báo lại để chỉnh."
     },
     {
       "id": "lark",
@@ -541,7 +541,7 @@
             "env": "APP_SECRET"
           }
         ],
-        "guide": "Cần Node.js 18+ trên máy chạy Boss. Làm 1 lần: vào open.larksuite.com/app > Create custom app > ở 'Credentials & Basic Info' lấy App ID + App Secret. Vào 'Permissions & Scopes' cấp các quyền cần dùng (vd im:message, im:chat, docx:document, bitable:app, contact:user.id) rồi 'Create version' để phát hành app (có thể cần admin duyệt). Dán App ID + App Secret vào đây. Boss chỉ đọc/làm được đúng những quyền bạn đã cấp cho app.",
+        "guide": "Cần Node.js 18+ trên máy chạy Boss OS. Làm 1 lần: vào open.larksuite.com/app > Create custom app > ở 'Credentials & Basic Info' lấy App ID + App Secret. Vào 'Permissions & Scopes' cấp các quyền cần dùng (vd im:message, im:chat, docx:document, bitable:app, contact:user.id) rồi 'Create version' để phát hành app (có thể cần admin duyệt). Dán App ID + App Secret vào đây. Boss OS chỉ đọc/làm được đúng những quyền bạn đã cấp cho app.",
         "guide_url": "https://open.larksuite.com/document/uAjLw4CM/ukTMukTMukTM/mcp_integration/mcp_introduction"
       },
       "tool_meta": {
@@ -550,7 +550,7 @@
         "danger": ["im_v1_message_create", "drive_v1_permissionMember_create"]
       },
       "default_perm": "readonly",
-      "risk": "Mức Ghi nháp cho phép Boss TẠO/SỬA bảng dữ liệu, tài liệu, nhóm chat thật trong Lark. Mức Toàn quyền thêm quyền GỬI TIN NHẮN vào chat và CẤP QUYỀN truy cập file. Chỉ cần xem/tìm thì giữ mức Chỉ đọc. Boss chỉ làm được đúng phạm vi quyền bạn cấp cho Lark app."
+      "risk": "Mức Ghi nháp cho phép Boss OS TẠO/SỬA bảng dữ liệu, tài liệu, nhóm chat thật trong Lark. Mức Toàn quyền thêm quyền GỬI TIN NHẮN vào chat và CẤP QUYỀN truy cập file. Chỉ cần xem/tìm thì giữ mức Chỉ đọc. Boss OS chỉ làm được đúng phạm vi quyền bạn cấp cho Lark app."
     }
   ]
 }

@@ -77,10 +77,3 @@ server/stop-last.log
 
 # Branding state (logo upload) - không commit
 server/branding/
-
-# --- them boi qua trinh backup ---
-.env
-.env.*
-*.key
-*.pem
-boss-server.log

@@ -1,12 +1,12 @@
 """
-tasks.py - Kanban Task Backlog + Dispatcher (Loop Engineering) cho Boss.
+tasks.py - Kanban Task Backlog + Dispatcher (Loop Engineering) cho Boss OS.
 
 Biến "Tự cải thiện" từ 1 loop monolithic thành BỘ NÃO điều phối: giữ 1 backlog task,
 mỗi nhịp chọn task ưu tiên cao nhất rồi ĐIỀU PHỐI xuống bộ máy workflow/agent (ĐÔI TAY)
 để thực thi. Đây là sợi dây "lịch → workflow" còn thiếu.
 
 Học state-machine từ Hermes Kanban (VALID_STATUSES, typed block, atomic claim, dispatcher
-pass "reclaim stale → promote ready → run") nhưng bản Boss:
+pass "reclaim stale → promote ready → run") nhưng bản Boss OS:
   - Đơn người dùng, 1 board/brain, lưu JSON trong vault (Boss/kanban.json) → portable + git-backed.
   - Tái dùng execute_workflow() headless (không dựng orchestrator mới).
   - AN TOÀN MẶC ĐỊNH: dispatch chạy nền = tool FILE-ONLY (execute_workflow(tools=SAFE)) → agent

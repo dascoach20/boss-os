@@ -1,11 +1,11 @@
 """
 Ngữ cảnh kênh hội thoại - port ý tưởng gateway của hermes-agent (NousResearch).
 
-Vấn đề: Boss nhận tin từ nhiều "cửa" (Telegram, dashboard web) nhưng model
+Vấn đề: Boss OS nhận tin từ nhiều "cửa" (Telegram, dashboard web) nhưng model
 không tự biết mình đang trả lời qua cửa nào, và file tạo ra không quay về
 đúng kênh. Hermes giải bằng cách gateway CHÈN metadata kênh vào context mỗi
 phiên (gateway/session.py: Source + User + Connected Platforms + Delivery
-options). Module này làm đúng việc đó cho Boss:
+options). Module này làm đúng việc đó cho Boss OS:
 
 1. build_channel_block()  - block metadata kênh chèn vào system prompt.
 2. collect_turn_files()   - gom file sinh ra trong 1 lượt trả lời để gateway
@@ -33,11 +33,11 @@ def build_channel_block(source: str, meta: dict = None, telegram_running: bool =
     --resume không bị lệch context, giống cách hermes giữ prompt cache.
     """
     meta = meta or {}
-    platforms = ["local (file trên máy chạy Boss)", "dashboard web"]
+    platforms = ["local (file trên máy chạy Boss OS)", "dashboard web"]
     if telegram_running or source == "telegram":
         platforms.append("Telegram bot")
 
-    lines = ["", "", "# === KÊNH HỘI THOẠI HIỆN TẠI (gateway Boss tự chèn - dữ liệu thật, không phải đoán) ==="]
+    lines = ["", "", "# === KÊNH HỘI THOẠI HIỆN TẠI (gateway Boss OS tự chèn - dữ liệu thật, không phải đoán) ==="]
     if source == "telegram":
         who = (meta.get("user_name") or "").strip() or "user"
         if meta.get("username"):
@@ -55,7 +55,7 @@ def build_channel_block(source: str, meta: dict = None, telegram_running: bool =
             "",
             "## Gửi file cho user qua Telegram (2 cách)",
             "1. TỰ ĐỘNG: file bạn tạo bằng tool Write trong lượt này, hoặc file có ĐƯỜNG DẪN TUYỆT ĐỐI "
-            "xuất hiện trong câu trả lời cuối cùng, sẽ được Boss tự đính kèm gửi qua Telegram ngay sau "
+            "xuất hiện trong câu trả lời cuối cùng, sẽ được Boss OS tự đính kèm gửi qua Telegram ngay sau "
             f"câu trả lời (tối đa {MAX_FILES_PER_TURN} file/lượt, mỗi file dưới {MAX_FILE_MB}MB). "
             "Muốn user nhận file nào, cứ nhắc đường dẫn tuyệt đối của nó trong câu trả lời.",
             "2. GỬI NGAY / file có sẵn từ trước: dùng tool Bash gọi "
@@ -70,7 +70,7 @@ def build_channel_block(source: str, meta: dict = None, telegram_running: bool =
         ]
     else:
         lines += [
-            "- Nguồn tin nhắn này: Dashboard web Boss (user mở bằng trình duyệt, file hiện dạng đường dẫn).",
+            "- Nguồn tin nhắn này: Dashboard web Boss OS (user mở bằng trình duyệt, file hiện dạng đường dẫn).",
             f"- Nền tảng đang kết nối: {', '.join(platforms)}.",
         ]
         if telegram_running:

@@ -1,17 +1,17 @@
 # Đồ thị tri thức 3D
 
-Đồ thị tri thức 3D là "trái tim hình ảnh" của màn hình Boss: một đám tinh vân (nebula) tím phát sáng, mỗi đốm sáng là một ghi chú trong bộ não của bạn, các đốm nối với nhau bằng những sợi sáng mờ. Nó vừa để nhìn cho đẹp, vừa để bạn thấy được kho tri thức của mình đang lớn dần và các ý tưởng đang nối với nhau ra sao. Trang này hướng dẫn từng thao tác cụ thể.
+Đồ thị tri thức 3D là "trái tim hình ảnh" của màn hình Boss OS: một đám tinh vân (nebula) tím phát sáng, mỗi đốm sáng là một ghi chú trong bộ não của bạn, các đốm nối với nhau bằng những sợi sáng mờ. Nó vừa để nhìn cho đẹp, vừa để bạn thấy được kho tri thức của mình đang lớn dần và các ý tưởng đang nối với nhau ra sao. Trang này hướng dẫn từng thao tác cụ thể.
 
 Xem thêm về nơi dữ liệu này đến từ đâu: [Second Brain: bộ nhớ, Wiki, INGEST](13-second-brain-bo-nho-wiki.md).
 
 ## Tính năng này là gì
 
-Hình dung đơn giản: mỗi file ghi chú `.md` trong bộ não của bạn là một ngôi sao. Khi trong một ghi chú bạn nhắc tới một ghi chú khác bằng cú pháp `[[Tên ghi chú]]` (gọi là wikilink), Boss vẽ một sợi nối giữa hai ngôi sao đó. Càng nhiều ghi chú trỏ tới nhau, mạng lưới càng dày, và đám sao trông càng giống một tinh vân sống.
+Hình dung đơn giản: mỗi file ghi chú `.md` trong bộ não của bạn là một ngôi sao. Khi trong một ghi chú bạn nhắc tới một ghi chú khác bằng cú pháp `[[Tên ghi chú]]` (gọi là wikilink), Boss OS vẽ một sợi nối giữa hai ngôi sao đó. Càng nhiều ghi chú trỏ tới nhau, mạng lưới càng dày, và đám sao trông càng giống một tinh vân sống.
 
 Những điều đồ thị thể hiện:
 
 - **Mỗi node (đốm sáng) = một ghi chú** trong bộ não/vault đang chọn. Node càng nhiều kết nối thì đốm sáng càng to.
-- **Mỗi sợi nối = một wikilink `[[...]]`** giữa hai ghi chú. Đây là cách Boss đọc quan hệ, chứ không phải bạn tự vẽ.
+- **Mỗi sợi nối = một wikilink `[[...]]`** giữa hai ghi chú. Đây là cách Boss OS đọc quan hệ, chứ không phải bạn tự vẽ.
 - **Màu sắc theo nhóm thư mục**: các ghi chú ở cùng một thư mục gốc (ví dụ nhóm Sources, nhóm Wiki, thư mục brain) có tông màu tím khác nhau, giúp phân vùng bằng mắt.
 - **Node cô đơn bị ẩn**: ghi chú không có bất kỳ kết nối nào (không link tới ai, cũng không ai link tới) sẽ không hiện, để đồ thị gọn. Số ghi chú bị ẩn được đếm riêng (xem mục thống kê bên dưới).
 - **Lớp agentic ở đáy**: ngay dưới đồ thị là dải chỉ số AGENTS · SKILLS · WORKFLOWS · ROUTINES. Đây là "phần cứng" của bộ não (số agent, skill, workflow, lịch tự động đang chạy), tách khỏi phần "tri thức" là các node phía trên. Bấm vào một chỉ số sẽ mở Studio đúng tab đó. Chi tiết ở [Agents & Workflows](07-agents-va-workflows.md), [Skills](06-skills.md), [Lịch & tự động hoá](12-lich-tu-dong-hoa.md).
@@ -20,18 +20,18 @@ Những điều đồ thị thể hiện:
 
 Đồ thị không đứng yên. Nó phản ứng theo hai tín hiệu:
 
-- **Khi bạn nói (hoặc khi Boss đọc trả lời)**: các đốm sáng phồng lên và sáng hơn theo nhịp âm lượng giọng nói. Nói to thì cả tinh vân "thở" mạnh hơn, xoay nhanh hơn một chút. Nói nhỏ hoặc im thì nó dịu lại.
-- **Khi Boss đang suy nghĩ**: khi trạng thái chuyển sang "đang suy nghĩ", đồ thị bật hiệu ứng "nơron kích hoạt". Các đốm sáng lần lượt loé lên rồi lan sang các node hàng xóm theo sợi nối, kèm những hạt sáng cam trôi dọc theo dây, trông như tín hiệu chạy qua mạng thần kinh. Khi Boss trả lời xong, hiệu ứng này tắt.
+- **Khi bạn nói (hoặc khi Boss OS đọc trả lời)**: các đốm sáng phồng lên và sáng hơn theo nhịp âm lượng giọng nói. Nói to thì cả tinh vân "thở" mạnh hơn, xoay nhanh hơn một chút. Nói nhỏ hoặc im thì nó dịu lại.
+- **Khi Boss OS đang suy nghĩ**: khi trạng thái chuyển sang "đang suy nghĩ", đồ thị bật hiệu ứng "nơron kích hoạt". Các đốm sáng lần lượt loé lên rồi lan sang các node hàng xóm theo sợi nối, kèm những hạt sáng cam trôi dọc theo dây, trông như tín hiệu chạy qua mạng thần kinh. Khi Boss OS trả lời xong, hiệu ứng này tắt.
 
 Ngoài ra, đồ thị luôn tự xoay nhẹ liên tục để lúc nào cũng "sống", kể cả khi bạn không làm gì.
 
-## Mở ở đâu trong Boss
+## Mở ở đâu trong Boss OS
 
 Đồ thị 3D nằm ngay ở trang chính, không cần bấm gì để mở:
 
 1. Mở dashboard (mặc định tại `http://<địa-chỉ-máy>:7777`). Nếu chưa cài, xem [Bắt đầu & thiết lập lần đầu](01-bat-dau-thiet-lap.md).
-2. Ở thanh điều hướng bên trái, chọn mục **Boss (3D)**. Đây là trang trung tâm, và đồ thị chiếm cả vùng giữa màn hình.
-3. Khi bạn chuyển sang các trang quản lý khác (Tổng quan, Workflows, Agents, Skills, ...), đồ thị **tự động tạm dừng** để tiết kiệm CPU/GPU. Quay lại trang **Boss (3D)** thì nó chạy lại ngay.
+2. Ở thanh điều hướng bên trái, chọn mục **Boss OS (3D)**. Đây là trang trung tâm, và đồ thị chiếm cả vùng giữa màn hình.
+3. Khi bạn chuyển sang các trang quản lý khác (Tổng quan, Workflows, Agents, Skills, ...), đồ thị **tự động tạm dừng** để tiết kiệm CPU/GPU. Quay lại trang **Boss OS (3D)** thì nó chạy lại ngay.
 
 Lưu ý: trên màn hình hẹp (điện thoại), đồ thị cũng tự tạm dừng để đỡ tốn pin.
 
@@ -54,15 +54,15 @@ Bạn tương tác với đồ thị bằng chuột (hoặc chạm), giống xoa
    - Số kết nối, ví dụ `5 kết nối · click để mở`.
 3. Rê ra chỗ trống thì bảng chú thích biến mất.
 
-### Bấm vào một node để Boss mở ghi chú đó
+### Bấm vào một node để Boss OS mở ghi chú đó
 
 Đây là thao tác quan trọng nhất, biến đồ thị thành cách điều khiển bằng một cú click:
 
 1. Bấm chuột trái vào một đốm sáng.
 2. Camera bay tới, đưa node đó ra giữa màn hình (khoảng dưới một giây).
-3. Cùng lúc, Boss nhận một câu lệnh tự động: đọc đúng ghi chú đó trong second brain, tóm tắt ngắn nội dung chính và đề xuất việc tiếp theo nếu có. Kết quả hiện ở khung hội thoại bên phải.
+3. Cùng lúc, Boss OS nhận một câu lệnh tự động: đọc đúng ghi chú đó trong second brain, tóm tắt ngắn nội dung chính và đề xuất việc tiếp theo nếu có. Kết quả hiện ở khung hội thoại bên phải.
 
-Nói cách khác: thấy một ý tưởng thú vị trong tinh vân, bấm vào là Boss mở và tóm tắt hộ bạn ngay. Về cách trò chuyện tiếp, xem [Trò chuyện & giọng nói](02-tro-chuyen-va-giong-noi.md).
+Nói cách khác: thấy một ý tưởng thú vị trong tinh vân, bấm vào là Boss OS mở và tóm tắt hộ bạn ngay. Về cách trò chuyện tiếp, xem [Trò chuyện & giọng nói](02-tro-chuyen-va-giong-noi.md).
 
 ### Chọn nguồn dữ liệu để dựng đồ thị
 
@@ -100,7 +100,7 @@ Cạnh ô chọn brain có một dòng thống kê ngắn, ví dụ:
 
 ### Node tự mọc lên khi bộ não sinh ghi chú mới
 
-Đồ thị theo dõi bộ não theo thời gian thực. Khi Boss (hoặc bạn) tạo một ghi chú `.md` mới, hoặc sửa một ghi chú làm phát sinh link mới:
+Đồ thị theo dõi bộ não theo thời gian thực. Khi Boss OS (hoặc bạn) tạo một ghi chú `.md` mới, hoặc sửa một ghi chú làm phát sinh link mới:
 
 1. Một node mới **nảy sinh ngay trên đồ thị**: nó loé sáng to rồi co lại về kích thước thật, trông như một ngôi sao vừa hình thành cạnh mạng lưới.
 2. Dòng thống kê cập nhật số note/kết nối và nháy nhẹ để báo có thay đổi.
@@ -111,19 +111,19 @@ Bạn không cần bấm tải lại. Đây là cách nhìn thấy Second Brain 
 
 Đồ thị không có nút bật/tắt cứng, nhưng nó tự quản lý để không ngốn máy:
 
-- **Tự tạm dừng** khi bạn rời trang **Boss (3D)** sang trang quản lý khác, khi mở Studio, hoặc khi màn hình hẹp. Lúc tạm dừng, vòng vẽ, phần vật lý và cả việc tự xoay đều ngừng, đưa mức dùng CPU/GPU về gần 0.
-- **Tự chạy lại** ngay khi bạn quay về trang **Boss (3D)** và không có Studio đang mở.
+- **Tự tạm dừng** khi bạn rời trang **Boss OS (3D)** sang trang quản lý khác, khi mở Studio, hoặc khi màn hình hẹp. Lúc tạm dừng, vòng vẽ, phần vật lý và cả việc tự xoay đều ngừng, đưa mức dùng CPU/GPU về gần 0.
+- **Tự chạy lại** ngay khi bạn quay về trang **Boss OS (3D)** và không có Studio đang mở.
 - **Không vẽ khi tab bị ẩn**: nếu bạn chuyển sang tab trình duyệt khác, đồ thị ngừng vẽ hoàn toàn cho tới khi bạn quay lại.
 
-Nói ngắn gọn: bạn chỉ cần vào đúng trang **Boss (3D)** là đồ thị sống; ra khỏi đó là nó tự ngủ.
+Nói ngắn gọn: bạn chỉ cần vào đúng trang **Boss OS (3D)** là đồ thị sống; ra khỏi đó là nó tự ngủ.
 
 ## Đồ thị được dựng ra sao (giải thích ngắn)
 
-Để bạn tin vào những gì mình thấy, đây là cách Boss dựng đồ thị ở phía sau:
+Để bạn tin vào những gì mình thấy, đây là cách Boss OS dựng đồ thị ở phía sau:
 
-1. Boss quét toàn bộ file `.md` trong nguồn đang chọn (brain đang chọn, hoặc thư mục bạn trỏ tới bằng nút 📁).
+1. Boss OS quét toàn bộ file `.md` trong nguồn đang chọn (brain đang chọn, hoặc thư mục bạn trỏ tới bằng nút 📁).
 2. Mỗi file thành một node. Tên node là tên file.
-3. Boss đọc nội dung từng file, tìm các wikilink `[[...]]`. Mỗi wikilink trỏ tới một file khác trở thành một sợi nối.
+3. Boss OS đọc nội dung từng file, tìm các wikilink `[[...]]`. Mỗi wikilink trỏ tới một file khác trở thành một sợi nối.
 4. Các node không có kết nối nào bị loại khỏi hình (nhưng vẫn được đếm vào mục "ẩn").
 5. Kết quả được vẽ thành đám tinh vân 3D. Kích thước mỗi đốm sáng tỉ lệ với số kết nối của nó.
 
@@ -135,20 +135,20 @@ Vì đồ thị đọc trực tiếp từ file thật, nên nó luôn phản án
 - **Thấy nhiều ghi chú bị "ẩn"?** Đó là các ghi chú mồ côi chưa link vào đâu. Mở chúng ra và thêm vài wikilink tới các khái niệm liên quan để kéo chúng vào mạng lưới.
 - **Node to = ý tưởng trung tâm.** Đốm sáng lớn nhất thường là những ghi chú được nhắc tới nhiều nhất. Đó là các "trụ" tri thức đáng để bạn đầu tư làm sâu.
 - **Dùng nút 📁 để xem nhanh một thư mục ghi chú bất kỳ** mà không cần biến nó thành brain chính thức.
-- **Muốn thấy đồ thị "suy nghĩ"?** Ra một câu hỏi cho Boss rồi nhìn tinh vân trong lúc nó xử lý: các đốm sáng sẽ lan tín hiệu qua nhau.
+- **Muốn thấy đồ thị "suy nghĩ"?** Ra một câu hỏi cho Boss OS rồi nhìn tinh vân trong lúc nó xử lý: các đốm sáng sẽ lan tín hiệu qua nhau.
 
 ## Sự cố thường gặp
 
 - **Đồ thị trống hoặc chỉ hiện vài đốm rời rạc**: brain đang chọn còn ít ghi chú, hoặc các ghi chú chưa có wikilink `[[...]]` nào nên bị ẩn hết. Hãy thêm ghi chú và link chúng lại. Kiểm tra dòng thống kê: nếu "ẩn" cao mà "note" thấp thì đúng là do thiếu kết nối.
 - **Báo "Thư viện 3D chưa tải (kiểm tra mạng)"**: trình duyệt chưa tải được thư viện đồ thị 3D. Kiểm tra kết nối mạng rồi tải lại trang. Nếu vẫn lỗi, xem [Khắc phục sự cố & FAQ](17-khac-phuc-su-co.md).
-- **Dòng thống kê báo "Lỗi: ..."**: Boss không dựng được đồ thị từ nguồn đang chọn, thường do đường dẫn thư mục sai (khi dùng nút 📁). Chọn lại một thư mục có chứa file `.md`.
-- **Đồ thị đứng im, không xoay**: có thể bạn đang ở trang khác, đang mở Studio, đang ở màn hình hẹp, hoặc tab bị ẩn. Quay lại đúng trang **Boss (3D)** ở tab đang mở là nó chạy lại.
+- **Dòng thống kê báo "Lỗi: ..."**: Boss OS không dựng được đồ thị từ nguồn đang chọn, thường do đường dẫn thư mục sai (khi dùng nút 📁). Chọn lại một thư mục có chứa file `.md`.
+- **Đồ thị đứng im, không xoay**: có thể bạn đang ở trang khác, đang mở Studio, đang ở màn hình hẹp, hoặc tab bị ẩn. Quay lại đúng trang **Boss OS (3D)** ở tab đang mở là nó chạy lại.
 - **Node mới không "mọc" khi vừa tạo ghi chú**: đồ thị theo dõi qua kết nối thời gian thực; nếu mất kết nối nó sẽ tự nối lại sau vài giây. Bạn cũng có thể đổi nguồn brain rồi chọn lại để buộc tải mới.
-- **Bấm node nhưng Boss không trả lời**: node click sẽ gửi một câu hỏi vào khung hội thoại. Nếu không thấy phản hồi, kiểm tra kết nối tới máy chủ và engine đang dùng ở [Models & engine](10-models-va-engine.md).
+- **Bấm node nhưng Boss OS không trả lời**: node click sẽ gửi một câu hỏi vào khung hội thoại. Nếu không thấy phản hồi, kiểm tra kết nối tới máy chủ và engine đang dùng ở [Models & engine](10-models-va-engine.md).
 
 ## Liên quan
 
-- [Trò chuyện & giọng nói](02-tro-chuyen-va-giong-noi.md) - điều khiển Boss bằng giọng, thứ làm tinh vân "thở".
+- [Trò chuyện & giọng nói](02-tro-chuyen-va-giong-noi.md) - điều khiển Boss OS bằng giọng, thứ làm tinh vân "thở".
 - [Second Brain: bộ nhớ, Wiki, INGEST](13-second-brain-bo-nho-wiki.md) - nơi các node được sinh ra.
 - [Agents & Workflows](07-agents-va-workflows.md) và [Skills](06-skills.md) - lớp agentic ở đáy đồ thị.
 - [Khắc phục sự cố & FAQ](17-khac-phuc-su-co.md) - khi có gì trục trặc.

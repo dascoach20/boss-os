@@ -20,7 +20,7 @@ from pathlib import Path
 # ── SCHEMA phổ quát cho vault (seed thành CLAUDE.md + AGENTS.md để Claude Code lẫn Codex tự nạp) ──
 # Trung lập ngành: KHÔNG có folder marketing/sales... hay Bullet Journal. Chỉ giữ pattern LLM Wiki
 # (compounding) + 3 kỷ luật chống bịa + 3 phép toán + HANDOFF. Taxonomy mọc dần theo source người dùng.
-_VAULT_SCHEMA = """# Vault Schema (Boss Second Brain)
+_VAULT_SCHEMA = """# Vault Schema (Boss OS Second Brain)
 
 > AI làm việc trên vault này PHẢI đọc file này trước. Mục tiêu: biến vault thành một **wiki
 > tích luỹ (compounding)** - tri thức được chưng cất MỘT LẦN từ nguồn rồi DUY TRÌ sống, không
@@ -71,7 +71,7 @@ Wiki: `type: wiki`, `status: active|draft|archived`, `tags: [wiki, <nhóm>]`, `c
 Source: `type: source`, `source_kind: article|book|podcast|video|own-note|screenshot|chat`, `status: unprocessed|processed`, `created`, `processed_at`, `wiki_links: [...]`, `url`.
 
 ## 7. Chỉ mục năng lực
-- `Boss/index.md` - chỉ mục MỌI năng lực (agents/skills/workflows/loops/lịch), tự sinh từ file (đừng sửa tay). Đọc file này để biết Boss đang có gì; kiểm TRƯỚC khi tạo năng lực mới để khỏi trùng. Song song `wiki/index.md` (tri thức).
+- `Boss/index.md` - chỉ mục MỌI năng lực (agents/skills/workflows/loops/lịch), tự sinh từ file (đừng sửa tay). Đọc file này để biết Boss OS đang có gì; kiểm TRƯỚC khi tạo năng lực mới để khỏi trùng. Song song `wiki/index.md` (tri thức).
 
 ## 8. Tiến hoá theo người dùng
 - Nhóm chủ đề trong `wiki/` MỌC DẦN theo source thực tế (tạo subfolder khi một chủ đề đủ dày), không định sẵn theo ngành.
@@ -83,7 +83,7 @@ _WIKI_INDEX = """# Wiki Index
 
 Catalog nội dung wiki (cập nhật mỗi lần INGEST). Đọc file này trước khi trả lời câu hỏi.
 
-_(Chưa có trang wiki nào. Thả source vào `sources/` rồi bảo Boss "tiêu hoá giúp tôi" để bắt đầu tích luỹ tri thức.)_
+_(Chưa có trang wiki nào. Thả source vào `sources/` rồi bảo Boss OS "tiêu hoá giúp tôi" để bắt đầu tích luỹ tri thức.)_
 """
 
 _WIKI_LOG = """# Wiki Log

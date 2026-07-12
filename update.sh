@@ -36,7 +36,7 @@ else
     $SUDO systemctl restart boss
     echo "==> Đã restart. Theo dõi:  journalctl -u boss -f"
   else
-    echo "==> Không thấy systemd service 'boss'. Hãy khởi động lại tiến trình Boss thủ công"
+    echo "==> Không thấy systemd service 'boss'. Hãy khởi động lại tiến trình Boss OS thủ công"
     echo "    (vd: kill tiến trình cũ rồi chạy lại uvicorn / start script)."
   fi
 fi

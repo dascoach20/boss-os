@@ -1,12 +1,12 @@
 # Kế hoạch: Kho Kết nối (MCP Hub) + Agent độc lập engine
 
-> Bản kế hoạch dev, viết 2026-07-04 trên nền code v0.8.13. Mục tiêu: nâng cấp toàn bộ trải nghiệm MCP của Boss và tách Boss khỏi sự phụ thuộc cấu trúc Claude Code.
+> Bản kế hoạch dev, viết 2026-07-04 trên nền code v0.8.13. Mục tiêu: nâng cấp toàn bộ trải nghiệm MCP của Boss OS và tách Boss OS khỏi sự phụ thuộc cấu trúc Claude Code.
 
 ## 1. Mục tiêu (3 việc)
 
 1. **Kho MCP mẫu (catalog)**: người dùng mở trang, thấy sẵn Pancake POS, Zalo, Botcake, Webcake Landing... bấm "Kết nối" là xong. Không phải tự gõ URL, transport, header như hiện nay.
 2. **Một connector nối được NHIỀU tài khoản** (multi-account kiểu Hermes): cùng Pancake POS nhưng 3 cửa hàng, cùng Zalo nhưng 2 tài khoản. Mỗi tài khoản đăng nhập dễ như Claude: dán key hoặc quét QR hoặc bấm OAuth, có xác nhận "Đã kết nối: <tên shop>".
-3. **Mọi engine đều dùng được mọi thứ**: MCP, skill, loop, đọc/ghi file chạy như nhau dù Main Model là Claude Code, Codex, OpenRouter, OpenAI API hay Anthropic API. Boss là agent thực thụ, Claude Code chỉ là MỘT trong các bộ não.
+3. **Mọi engine đều dùng được mọi thứ**: MCP, skill, loop, đọc/ghi file chạy như nhau dù Main Model là Claude Code, Codex, OpenRouter, OpenAI API hay Anthropic API. Boss OS là agent thực thụ, Claude Code chỉ là MỘT trong các bộ não.
 
 ## 2. Hiện trạng (đọc code ngày 2026-07-04)
 
@@ -27,7 +27,7 @@ Khoảng trống so với mục tiêu:
 
 ## 3. Kiến trúc đích: BOSS MCP HUB
 
-Ý tưởng trung tâm: mọi engine đấu vào MỘT điểm duy nhất do Boss làm chủ. Hub lo kết nối, tài khoản, quyền, log. Engine chỉ thấy "một MCP server tên boss".
+Ý tưởng trung tâm: mọi engine đấu vào MỘT điểm duy nhất do Boss OS làm chủ. Hub lo kết nối, tài khoản, quyền, log. Engine chỉ thấy "một MCP server tên boss".
 
 ```
 Claude Code  --mcp-config 1 entry --\
@@ -114,7 +114,7 @@ Lợi ích của việc dồn về 1 điểm:
 - Loop mode map thẳng vào hub: loop `suggest` gọi hub với ngữ cảnh chỉ-đọc (hub từ chối mọi tool ghi bất kể connection perm), `auto` chặn nhóm danger, `full` theo perm của connection. An toàn thành lớp cứng, không còn phụ thuộc prompt.
 - Audit log: mọi tools/call ghi lại (connection, tool, args rút gọn, kết quả ok/lỗi, thời gian) vào SQLite/JSONL, xem được từ UI.
 
-### 3.5 OAuth do Boss tự lo (bỏ phụ thuộc claude mcp add)
+### 3.5 OAuth do Boss OS tự lo (bỏ phụ thuộc claude mcp add)
 
 - Implement chuẩn MCP Authorization (OAuth 2.1 + PKCE + Dynamic Client Registration): bấm "Kết nối" mở browser, callback về `http(s)://<dashboard>/connect/oauth/callback`, hub lưu + tự refresh token, gắn vào header khi gọi server.
 - Chạy được cả trên VPS vì callback đi qua chính URL dashboard user đang mở (không cần terminal, không cần màn hình máy chủ).
@@ -134,7 +134,7 @@ Flow thêm tài khoản theo auth type:
 
 - **apikey**: modal 1 ô dán key + dòng hướng dẫn lấy key ở đâu (text + link docs của hãng) -> bấm Kết nối -> hub validate ngay (gọi tool xác minh) -> hiện "✓ Đã kết nối: <tên shop>" và tự điền label -> chọn quyền (mặc định theo catalog, POS mặc định chỉ đọc). Sai key thì báo lỗi tại chỗ, kèm gợi ý.
 - **oauth**: bấm Kết nối -> mở tab đăng nhập của hãng -> quay lại thấy account đã vào danh sách.
-- **qr** (Zalo): modal hiện mã QR (Boss spawn CLI login, bắt QR đưa lên UI), poll trạng thái tới khi "✓ Đã đăng nhập: <tên Zalo>". Kèm cảnh báo rủi ro bắt buộc đọc (xem mục 6).
+- **qr** (Zalo): modal hiện mã QR (Boss OS spawn CLI login, bắt QR đưa lên UI), poll trạng thái tới khi "✓ Đã đăng nhập: <tên Zalo>". Kèm cảnh báo rủi ro bắt buộc đọc (xem mục 6).
 - Sau connection ĐẦU TIÊN của user: chạy 1 câu demo ngay trong trang ("Hôm nay bán được bao nhiêu?") để chứng minh giá trị tức thì.
 
 Nguyên tắc: người thường không bao giờ thấy URL/transport/header. Kỹ thuật chỉ hiện trong "Tự thêm (nâng cao)" và khi mở chi tiết connection.
@@ -154,7 +154,7 @@ Việc cụ thể:
 
 1. **Anthropic API tool loop**: viết `anthropic_chat_with_mcp` trong `engine.py` (Anthropic Messages API có tool use, pattern y hệt `openai_chat_with_mcp`). Việc nhỏ, giá trị ngay: gỡ dòng "Anthropic API = chat thuần" khỏi docs.
 2. **Built-in tools cho engine API**: bộ tool file sandbox trong vault (read/list/write/append theo perm), đưa vào cùng vòng tool-calling với tool MCP. Từ đó loop/task/workflow chạy được trên engine API.
-3. **Skill router mọi engine**: inject danh sách skill (name + description từ `.claude/skills/*/SKILL.md`) vào system prompt + meta-tool `use_skill(name)` trả về nội dung SKILL.md khi model kích hoạt (progressive disclosure, đúng cách Claude Code làm nhưng do Boss tự làm nên engine nào cũng chạy).
+3. **Skill router mọi engine**: inject danh sách skill (name + description từ `.claude/skills/*/SKILL.md`) vào system prompt + meta-tool `use_skill(name)` trả về nội dung SKILL.md khi model kích hoạt (progressive disclosure, đúng cách Claude Code làm nhưng do Boss OS tự làm nên engine nào cũng chạy).
 4. **Loop/agent/workflow nhận provider API**: trường `model` của agent mở rộng nhận cả provider API; runner map qua Engine interface chung.
 5. Chuẩn hoá interface `Engine` (capabilities: native_mcp, native_skills, file_tools...) để chỗ gọi không if/else theo tên engine rải rác như hiện nay; badge engine trên UI đọc từ capability thật.
 

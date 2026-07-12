@@ -1,5 +1,5 @@
 """
-OAuth 2.1 cho remote MCP server (chuẩn MCP Authorization) - Boss TỰ giữ token,
+OAuth 2.1 cho remote MCP server (chuẩn MCP Authorization) - Boss OS TỰ giữ token,
 mọi engine dùng chung, KHÔNG cần mở terminal gõ /mcp như trước.
 Luồng: discovery (RFC 9728 / .well-known) → DCR (RFC 7591, nếu server hỗ trợ)
 → authorize PKCE S256 → callback → token → tự refresh.

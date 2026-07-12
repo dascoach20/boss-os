@@ -145,7 +145,7 @@ function handleMessage(data) {
       spokeStream = true;
     }
   } else if (data.type === "response") {
-    hideActivity();
+    hideActivity(); handleMessage._lastErr = null;   // có trả lời thật → cho phép lỗi hiện lại lần sau
     const { clean, cards } = extractMetrics(data.content);
     if (cards) pushMetricsToPanel(cards);
     // Fallback: response rỗng nhưng đã stream được → giữ phần đã stream; nếu vẫn rỗng → báo nhẹ
@@ -168,9 +168,15 @@ function handleMessage(data) {
     maybeAutoLearn();
     notifySessions();   // sidebar lịch sử tự refresh (title/updated_at vừa đổi)
   } else if (data.type === "error") {
-    hideActivity(); appendBossMessage("⚠ " + data.content); setProcessing(false);
+    hideActivity(); setProcessing(false);
+    // Chống spam: lỗi giống hệt lỗi vừa hiện thì không lặp lại bong bóng (tránh cảm giác loop).
+    if (data.content !== handleMessage._lastErr) {
+      appendBossMessage("⚠ " + data.content);
+      handleMessage._lastErr = data.content;
+    }
     setOrbState("", "SẴN SÀNG");
   } else if (data.type === "system") {
+    handleMessage._lastErr = null;   // có phản hồi khác → cho phép hiện lại lỗi lần sau nếu tái diễn
     appendBossMessage(data.content);
   }
 }

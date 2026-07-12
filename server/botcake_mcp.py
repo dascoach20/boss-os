@@ -1,6 +1,6 @@
 """
 Cầu nối Botcake (transport "internal" trong catalog) - Botcake KHÔNG có MCP chính chủ,
-Boss tự bọc Public API v1 thành bộ tool MCP-tương-đương.
+Boss OS tự bọc Public API v1 thành bộ tool MCP-tương-đương.
 Đã verify 2026-07-04: base https://botcake.io/api/public_api/v1, auth header
 "access-token: <page token>" (Botcake > Cấu hình > Tích hợp > Public API).
 spec["secrets"] = {"api_key": <token>, "page_id": <id trang>} (mcp_store.resolved cấp).

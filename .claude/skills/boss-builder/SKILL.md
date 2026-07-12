@@ -1,12 +1,12 @@
 ---
-name: Boss Builder
-description: Kích hoạt khi người dùng muốn TẠO hoặc SỬA một năng lực của Boss - agent, skill, workflow, hoặc loop (vd "tạo agent chuyên X", "thêm kỹ năng Y", "dựng workflow nghiên cứu rồi viết", "tạo loop mỗi 2 tiếng làm Z", "làm cho Boss biết làm ..."). Đây là hướng dẫn cách ghi đúng file chuẩn của Boss.
+name: Boss OS Builder
+description: Kích hoạt khi người dùng muốn TẠO hoặc SỬA một năng lực của Boss OS - agent, skill, workflow, hoặc loop (vd "tạo agent chuyên X", "thêm kỹ năng Y", "dựng workflow nghiên cứu rồi viết", "tạo loop mỗi 2 tiếng làm Z", "làm cho Boss OS biết làm ..."). Đây là hướng dẫn cách ghi đúng file chuẩn của Boss OS.
 group: AI
 ---
 
-# Boss Builder - tạo agent / skill / workflow / loop
+# Boss OS Builder - tạo agent / skill / workflow / loop
 
-Khi người dùng muốn Boss có thêm một năng lực, bạn TỰ GHI FILE .md đúng chuẩn dưới đây vào
+Khi người dùng muốn Boss OS có thêm một năng lực, bạn TỰ GHI FILE .md đúng chuẩn dưới đây vào
 vault (brain đang chọn). Studio / trang tương ứng tự nhận file mới. Luôn báo cáo ngắn sau khi tạo.
 
 ## Quy trình (làm đúng thứ tự)
@@ -91,6 +91,6 @@ updated: <YYYY-MM-DD>
 - KHÔNG tạo năng lực tự làm hành động tiền/đơn/quảng cáo/gửi tin/đăng bài mà không có người duyệt.
 - KHÔNG bao giờ để một loop/automation tự tạo hoặc tự bật loop khác (chống phình vô hạn) - chỉ ĐỀ XUẤT.
 - Skill/agent do TỰ ĐỘNG (loop/engine học) sinh ra -> để dạng nháp chờ duyệt. Skill do user yêu cầu
-  trực tiếp -> tạo bật luôn nhưng phải kiểm trùng + `description` trigger rõ (skill rác làm Boss
+  trực tiếp -> tạo bật luôn nhưng phải kiểm trùng + `description` trigger rõ (skill rác làm Boss OS
   chọn skill sai). Đừng tạo skill trùng chức năng skill đã có.
 - Sau khi tạo, KHÔNG tự chạy thứ có side-effect; để user xem trước.
