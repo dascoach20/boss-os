@@ -83,3 +83,4 @@ server/branding/
 .env.*
 *.key
 *.pem
+boss-server.log
