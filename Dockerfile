@@ -18,12 +18,12 @@ FROM python:3.12-slim
 # (Documentation / Quick start / Source). Trỏ về docs trên GitHub.
 LABEL org.opencontainers.image.title="Boss OS" \
       org.opencontainers.image.description="AI operating layer: chat + voice + second brain + tự động hoá, xây trên CLI của nhà cung cấp AI (Claude Code, ChatGPT/Codex)." \
-      org.opencontainers.image.url="https://github.com/pham-dai-2000/boss-os" \
-      org.opencontainers.image.source="https://github.com/pham-dai-2000/boss-os" \
-      org.opencontainers.image.documentation="https://github.com/pham-dai-2000/boss-os/blob/main/docs/README.md" \
+      org.opencontainers.image.url="https://github.com/dascoach20/boss-os" \
+      org.opencontainers.image.source="https://github.com/dascoach20/boss-os" \
+      org.opencontainers.image.documentation="https://github.com/dascoach20/boss-os/blob/main/docs/README.md" \
       org.opencontainers.image.licenses="MIT" \
-      com.hostinger.documentation="https://github.com/pham-dai-2000/boss-os/blob/main/docs/README.md" \
-      com.hostinger.quickstart="https://github.com/pham-dai-2000/boss-os/blob/main/QUICKSTART.md"
+      com.hostinger.documentation="https://github.com/dascoach20/boss-os/blob/main/docs/README.md" \
+      com.hostinger.quickstart="https://github.com/dascoach20/boss-os/blob/main/QUICKSTART.md"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

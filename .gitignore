@@ -77,3 +77,4 @@ server/stop-last.log
 
 # Branding state (logo upload) - không commit
 server/branding/
+boss-server.log

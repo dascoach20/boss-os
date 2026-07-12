@@ -2,7 +2,7 @@
 # Boss OS - docker compose (PRODUCTION: pull image dựng sẵn từ GHCR)
 #
 # CÀI TRÊN HOSTINGER: dùng file RIÊNG cho Hostinger (1 container, deploy là chạy, không kén hạ tầng):
-#   https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.hostinger.yml
+#   https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.hostinger.yml
 #   (Docker Manager → Compose → URL. Cách gắn TÊN MIỀN + HTTPS ghi trong chú thích cuối file đó / DEPLOY.md.)
 #   File NÀY cũng chạy trên Hostinger nhưng kèm Watchtower (hay báo "Partially running") → nên dùng file trên.
 #
@@ -17,7 +17,7 @@
 # ============================================================================
 services:
   boss:
-    image: ghcr.io/pham-dai-2000/boss-os:latest
+    image: ghcr.io/dascoach20/boss-os:latest
     container_name: boss
     restart: unless-stopped
     pull_policy: always

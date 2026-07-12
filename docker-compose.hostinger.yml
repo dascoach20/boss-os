@@ -7,7 +7,7 @@
 #
 # CÁCH DÙNG:
 #   1) Docker Manager > Compose > URL > dán:
-#      https://raw.githubusercontent.com/pham-dai-2000/boss-os/main/docker-compose.hostinger.yml
+#      https://raw.githubusercontent.com/dascoach20/boss-os/main/docker-compose.hostinger.yml
 #   2) Ô Environment (Biến môi trường) đặt DOMAIN_NAME (để có HTTPS):
 #        - Link miễn phí (KHÔNG cần mua tên miền):  DOMAIN_NAME=boss.<hostname-vps>.hstgr.cloud
 #          (hostname xem ở hPanel > VPS, vd: DOMAIN_NAME=boss.srv1782015.hstgr.cloud)
@@ -25,7 +25,7 @@
 # ============================================================================
 services:
   boss:
-    image: ghcr.io/pham-dai-2000/boss-os:latest
+    image: ghcr.io/dascoach20/boss-os:latest
     container_name: boss
     restart: unless-stopped
     pull_policy: always
@@ -46,10 +46,10 @@ services:
       - "18777:7777"                 # đường vào dự phòng (nút Open / http://<ip>:7777)
     labels:
       # Guide (Documentation / Quick start) trong Docker Manager - trỏ docs GitHub.
-      - org.opencontainers.image.documentation=https://github.com/pham-dai-2000/boss-os/blob/main/docs/README.md
-      - org.opencontainers.image.source=https://github.com/pham-dai-2000/boss-os
-      - com.hostinger.documentation=https://github.com/pham-dai-2000/boss-os/blob/main/docs/README.md
-      - com.hostinger.quickstart=https://github.com/pham-dai-2000/boss-os/blob/main/QUICKSTART.md
+      - org.opencontainers.image.documentation=https://github.com/dascoach20/boss-os/blob/main/docs/README.md
+      - org.opencontainers.image.source=https://github.com/dascoach20/boss-os
+      - com.hostinger.documentation=https://github.com/dascoach20/boss-os/blob/main/docs/README.md
+      - com.hostinger.quickstart=https://github.com/dascoach20/boss-os/blob/main/QUICKSTART.md
       # Tên router/service = ${COMPOSE_PROJECT_NAME} → chạy nhiều bản trên cùng VPS không đụng nhau.
       # Host = ${DOMAIN_NAME}; chưa đặt thì mặc định "localhost" (deploy vẫn chạy, chỉ chưa có domain/HTTPS).
       - traefik.enable=true
