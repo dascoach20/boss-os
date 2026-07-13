@@ -55,7 +55,7 @@ _AUTH_PUBLIC_EXACT = ("/", "/favicon.ico", "/auth/status", "/auth/login", "/auth
                       "/hub/mcp", "/connect/oauth/callback")
 # Endpoint CHỈ-LOCALHOST: agent (Claude CLI chạy cùng máy/container) curl được mà không cần
 # cookie đăng nhập; request từ ngoài (qua Traefik/Caddy/LAN) đến từ IP khác loopback → vẫn bị chặn.
-_AUTH_LOCAL_EXACT = ("/telegram/send-file",)
+_AUTH_LOCAL_EXACT = ("/telegram/send-file", "/hooks/zalo")
 
 
 @app.middleware("http")
@@ -2655,6 +2655,44 @@ tasks_feature = tasks_mod.register(app, tasks_mod.TasksDeps(
 # Nối learn → Kanban: engine học đề xuất việc nền → enqueue vào backlog.
 # Gate ở learn.py (cap "task" mặc định off + chỉ enqueue khi allow_write); dedup ở tasks.enqueue.
 learn_feature.deps.enqueue_task = tasks_feature.enqueue
+
+
+# ============================================================
+# ZALO REALTIME auto-reply (zalo_realtime.py) - event-driven qua `zalo listen --webhook`.
+# Khách nhắn Zalo -> ack tức thì -> Claude trả lời / trấn an / escalate Telegram -> tự học.
+# Bật bằng env ZALO_REALTIME=1 (hoặc POST /zalo-rt/start). Brain trả lời: env ZALO_BRAIN.
+# ============================================================
+import zalo_realtime as zalo_rt_mod
+
+
+def _zalo_active_brain() -> str:
+    return os.getenv("ZALO_BRAIN", "brain")
+
+
+async def _notify_owner(text: str) -> None:
+    """Gửi 1 tin cho Sếp qua Telegram (chat_id đầu trong whitelist). No-op nếu bot tắt."""
+    import httpx
+    bot = globals().get("_TG_BOT")
+    chats = getattr(bot, "chat_ids", None) if bot else None
+    if not bot or not chats:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            await bot._send(client, chats[0], text)
+    except Exception as e:
+        print(f"[notify_owner] {e}", file=__import__('sys').stderr)
+
+
+zalo_rt_feature = zalo_rt_mod.register(app, zalo_rt_mod.ZaloRTDeps(
+    build_system_prompt=build_system_prompt,
+    brain_root=_brain_root,
+    aux_model=_aux_model,
+    readonly_tools=READONLY_TOOLS,
+    state_dir=cfgmod.STATE_DIR,
+    active_brain=_zalo_active_brain,
+    notify_owner=_notify_owner,
+    settings=cfgmod.read_settings,
+))
 
 
 @app.get("/lint")
