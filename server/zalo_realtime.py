@@ -169,15 +169,17 @@ class ZaloRealtime:
         return await task
 
     # ---------- tự học: lưu Q&A ----------
-    async def _log_qa(self, question: str, answer: str, thread_id: str) -> None:
+    async def _log_qa(self, question: str, answer: str, thread_id: str, name: str = "") -> None:
         ts = time.strftime("%Y-%m-%d %H:%M:%S")
+        who = name or "(không rõ)"
         # 1) brain memory (append file .md — curator/loop sẽ chưng cất sau)
         try:
             brain = self.deps.active_brain()
             mem_dir = Path(self.deps.brain_root(brain)) / "memory"
             mem_dir.mkdir(parents=True, exist_ok=True)
             f = mem_dir / "zalo-qa-hoc.md"
-            entry = f"\n## {ts} · thread {thread_id}\n**Khách hỏi:** {question}\n**Đã trả lời:** {answer}\n"
+            entry = (f"\n## {ts} · {who} · thread {thread_id}\n"
+                     f"**Khách hỏi:** {question}\n**Đã trả lời:** {answer}\n")
             with f.open("a", encoding="utf-8") as fh:
                 fh.write(entry)
         except Exception as e:
@@ -188,7 +190,7 @@ class ZaloRealtime:
             try:
                 async with httpx.AsyncClient(timeout=15) as client:
                     await client.post(url, json={
-                        "time": ts, "thread": str(thread_id),
+                        "time": ts, "thread": str(thread_id), "name": who,
                         "question": question, "answer": answer,
                     })
             except Exception as e:
@@ -200,7 +202,7 @@ class ZaloRealtime:
             _log(f"event: {json.dumps(payload, ensure_ascii=False)[:500]}")
         except Exception:
             pass
-        thread_id, text, is_self = self._parse(payload)
+        thread_id, text, is_self, name = self._parse(payload)
         if not thread_id or not text or is_self:
             return
         # chống xử lý chồng cùng 1 khách trong 3s (gộp tin bắn liên tiếp)
@@ -219,7 +221,7 @@ class ZaloRealtime:
             try:
                 await self.deps.notify_owner(
                     "🔔 KHÁCH ZALO CẦN SẾP TRẢ LỜI\n"
-                    f"Thread: {thread_id}\n"
+                    f"Khách: {name or '(không rõ tên)'} · thread {thread_id}\n"
                     f"Khách hỏi: {text}\n\n"
                     "Bot đã báo khách chờ. Sếp trả lời giúp nhé."
                 )
@@ -228,21 +230,23 @@ class ZaloRealtime:
             return
         self.replied += 1
         await self._send(thread_id, reply)
-        await self._log_qa(text, reply, thread_id)
+        await self._log_qa(text, reply, thread_id, name or "")
 
     def _parse(self, p: dict):
-        """Rút threadId + text + is_self từ payload webhook (thủ đa dạng field vì tuỳ version CLI)."""
+        """Rút threadId + text + is_self + tên khách từ payload webhook của `zalo listen`.
+        Schema thật (event message): {event, threadId, type, isSelf, uidFrom, dName, content}.
+        content là string với tin text, là object với đính kèm (bỏ qua). Có fallback phòng đổi version."""
         if not isinstance(p, dict):
-            return None, None, False
-        # event có thể lồng trong 'data'/'message'
-        d = p.get("data") if isinstance(p.get("data"), dict) else p
-        thread = (d.get("threadId") or d.get("thread_id") or d.get("uidFrom")
-                  or d.get("fromId") or d.get("groupId") or p.get("threadId"))
-        text = (d.get("text") or d.get("message") or d.get("content") or d.get("body") or "")
-        if isinstance(text, dict):
-            text = text.get("text") or text.get("content") or ""
-        is_self = bool(d.get("isSelf") or d.get("self") or d.get("fromMe"))
-        return (str(thread) if thread else None), (str(text).strip() if text else None), is_self
+            return None, None, False, None
+        # message event phẳng; friend/group event lồng trong 'data' -> ưu tiên field phẳng của message
+        thread = (p.get("threadId") or p.get("thread_id") or p.get("uidFrom") or p.get("fromId"))
+        content = p.get("content")
+        if content is None:
+            content = p.get("text") or p.get("message") or p.get("body") or ""
+        text = content if isinstance(content, str) else ""   # chỉ trả lời tin dạng text
+        is_self = bool(p.get("isSelf") or p.get("self") or p.get("fromMe"))
+        name = p.get("dName") or p.get("displayName") or p.get("name")
+        return (str(thread) if thread else None), (text.strip() if text else None), is_self, name
 
     # ---------- vòng đời listener ----------
     def start(self) -> dict:
