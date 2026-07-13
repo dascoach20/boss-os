@@ -154,14 +154,16 @@ class ZaloRealtime:
                 kb = Path(kbf).read_text(encoding="utf-8")[:20000]
             except Exception as e:
                 _log(f"KB read fail: {e}")
+        # cwd TRUNG TÍNH (KHÔNG phải brain): Claude Code CLI tự nạp project context từ cwd -
+        # nếu trỏ vào brain 61MB thì mỗi câu trả lời chậm khủng khiếp. Dùng /tmp cho nhẹ & nhanh.
         cli = ClaudeCLI(
             system_prompt=_reply_system_prompt(self.agent_name, self.agent_role, kb),
-            cwd=self.deps.brain_root(self.deps.active_brain()),
+            cwd=os.getenv("ZALO_CWD", "/tmp"),
             tag="zalo-reply",
         )
         # NHANH: model gọn (sonnet mặc định) + KHÔNG cho lục file (tránh chậm + lộ dữ liệu nội bộ)
         cli.model = os.getenv("ZALO_MODEL", "sonnet") or "sonnet"
-        cli.disallowed_tools = ["Read", "Glob", "Grep", "LS", "Bash", "Task",
+        cli.disallowed_tools = ["Read", "Glob", "Grep", "Bash", "Task",
                                 "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch"]
         cli.max_wall_s = REPLY_MAX_WALL_S
         if not cli.is_available():
