@@ -48,6 +48,7 @@ services:
       ZALO_SHEET_WEBHOOK: ${ZALO_SHEET_WEBHOOK:-}          # URL Google Apps Script để log Q&A realtime (tuỳ chọn)
       ZALO_AGENT_NAME: ${ZALO_AGENT_NAME:-Tuấn}            # tên "nhân viên AI" trả lời khách (1 số Zalo = 1 nhân viên)
       ZALO_AGENT_ROLE: ${ZALO_AGENT_ROLE:-nhân viên chăm sóc khách hàng của DAS}
+      ZALO_HOME: ${ZALO_HOME:-}                            # (tuỳ chọn) trỏ thẳng HOME chứa credential Zalo, bỏ qua dò connection
     ports:
       - "18777:7777"                 # đường vào dự phòng (nút Open / http://<ip>:7777)
     labels:

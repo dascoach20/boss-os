@@ -99,17 +99,21 @@ class ZaloRealtime:
 
     # ---------- tìm tài khoản Zalo đã kết nối ----------
     def _zalo_home(self) -> Optional[str]:
-        """HOME cô lập của connection Zalo đầu tiên đang bật (chứa credential đã quét QR)."""
+        """HOME cô lập chứa credential Zalo (đã quét QR).
+
+        QUAN TRỌNG: Zalo chỉ cho 1 phiên WebSocket/tài khoản. Listener realtime này PHẢI là
+        phiên DUY NHẤT → nên KHÔNG đòi connection 'enabled' (user tắt Zalo MCP để nó thôi mở
+        listener cạnh tranh, nhưng credential/home vẫn còn). Ưu tiên env ZALO_HOME nếu đặt tay."""
+        env_home = os.getenv("ZALO_HOME", "").strip()
+        if env_home:
+            return env_home
         try:
             for c in mcp_store.list_connections():
                 if c.get("connector_id") != "zalo":
                     continue
-                if c.get("enabled") is False:
-                    continue
                 home = (c.get("config") or {}).get("home_dir")
                 if home:
                     return home
-                # fallback: home mặc định theo quy ước mcp_store
                 return str(self.deps.state_dir / "connector-home" / f"{c['connector_id']}-{c.get('slug')}")
         except Exception as e:
             _log(f"zalo_home error: {e}")
