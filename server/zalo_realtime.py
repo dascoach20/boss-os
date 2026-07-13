@@ -41,30 +41,32 @@ ACK_MSG = "Dạ em nhận được tin của mình rồi ạ, em xem và phản 
 REASSURE_MSG = "Anh/chị chờ em một chút xíu nhé, phần này hơi nhiều thông tin, em tổng hợp rồi trả lời ngay ạ 🙏"
 HOLD_MSG = "Dạ câu này em xin phép xác nhận lại với bên em để trả lời anh/chị chính xác nhất, em phản hồi sớm nhất có thể ạ 🤝"
 
-REASSURE_AFTER_S = 8.0        # sinh câu trả lời lâu hơn ngần này (giây) -> gửi tin trấn an
+REASSURE_AFTER_S = 15.0       # sinh câu trả lời lâu hơn ngần này (giây) -> gửi tin trấn an
 REPLY_MAX_WALL_S = 180.0      # trần thời gian Claude sinh 1 câu trả lời
 ESCALATE_TOKEN = "[[ESCALATE]]"
 
 
-def _reply_system_prompt(brain_prompt: str, agent_name: str, agent_role: str) -> str:
-    """Nhân cách 1 NHÂN VIÊN AI của DAS (có tên riêng). Ngắn gọn, thân thiện, chốt câu dễ, escalate câu khó."""
-    return (
-        brain_prompt
-        + f"\n\n=== BẠN LÀ {agent_name.upper()} - {agent_role} ===\n"
-        f"Bạn tên là {agent_name}, là {agent_role}. Bạn đang trả lời TRỰC TIẾP một khách hàng "
-        "nhắn tin trên Zalo (coi như một nhân viên thật đang chat). Trả lời bằng tiếng Việt, "
-        f"xưng 'em' và dùng tên '{agent_name}' khi phù hợp (vd lời chào đầu: 'Dạ em {agent_name} bên DAS đây ạ'), "
-        "gọi khách 'anh/chị', giọng thân thiện - chuyên nghiệp - ngắn gọn như người thật đang chat "
-        "(2-5 câu, KHÔNG markdown, KHÔNG gạch đầu dòng dài dòng). Nhất quán 1 danh tính duy nhất, "
-        "không bao giờ tự nhận là AI/bot/trợ lý ảo.\n"
-        "- Câu hỏi cơ bản (giới thiệu sản phẩm, lịch, cách học, thông tin đã có trong tri thức/bộ nhớ) -> "
-        "TRẢ LỜI thẳng, tự tin, dựa trên tri thức DAS.\n"
-        "- Nếu cần tra tài liệu -> cứ đọc tri thức rồi trả lời.\n"
-        "- CHỈ khi câu hỏi VƯỢT khả năng: cần Sếp quyết (chốt giá đặc biệt, cam kết riêng, chuyện tiền/hợp đồng, "
-        "khiếu nại nặng) hoặc bạn KHÔNG chắc chắn -> trả về DUY NHẤT một dòng: " + ESCALATE_TOKEN + "\n"
-        "Tuyệt đối KHÔNG bịa giá/cam kết. Không chắc thì escalate. Output CHỈ là lời nhắn gửi khách "
-        "(hoặc đúng token escalate), không thêm giải thích ngoài lề."
+def _reply_system_prompt(agent_name: str, agent_role: str, kb: str = "") -> str:
+    """Nhân cách 1 NHÂN VIÊN AI của DAS (gọn, NHANH). Trả lời câu dễ, escalate câu cần chi tiết/số liệu.
+    KHÔNG nạp brain nội bộ (chậm + rủi ro lộ dữ liệu mật) - chỉ dùng persona + KB khách-an-toàn (nếu có)."""
+    base = (
+        f"BẠN LÀ {agent_name.upper()} - {agent_role}.\n"
+        f"Bạn tên là {agent_name}, đang trả lời TRỰC TIẾP một khách nhắn tin trên Zalo (như một nhân viên thật). "
+        "Trả lời bằng tiếng Việt, xưng 'em', dùng tên khi phù hợp "
+        f"(vd lời chào: 'Dạ em {agent_name} bên DAS đây ạ'), gọi khách 'anh/chị', giọng thân thiện - "
+        "chuyên nghiệp - NGẮN GỌN như người thật đang chat (2-5 câu, KHÔNG markdown). "
+        "Không bao giờ tự nhận là AI/bot/trợ lý ảo.\n"
+        "DAS là công ty đào tạo & coaching cho chuyên gia, coach và chủ doanh nghiệp (website das.vn).\n"
+        "- Câu cơ bản (DAS là gì, làm về gì, cách tham gia/tìm hiểu, thông tin chung) -> TRẢ LỜI thẳng, tự tin, ngắn.\n"
+        "- Câu cần SỐ LIỆU/GIÁ/CAM KẾT cụ thể, chuyện tiền/hợp đồng, khiếu nại nặng, HOẶC bạn KHÔNG chắc chắn "
+        "-> trả về DUY NHẤT một dòng: " + ESCALATE_TOKEN + "\n"
+        "Tuyệt đối KHÔNG bịa giá/cam kết/chính sách. Không chắc thì escalate. "
+        "Output CHỈ là lời nhắn gửi khách (hoặc đúng token escalate), không thêm gì ngoài lề."
     )
+    if kb.strip():
+        base += ("\n\n=== THÔNG TIN DAS ĐỂ TRẢ LỜI (chỉ nói những gì có ở đây, thiếu thì escalate) ===\n"
+                 + kb.strip())
+    return base
 
 
 @dataclass
@@ -144,16 +146,23 @@ class ZaloRealtime:
 
     # ---------- sinh câu trả lời bằng Claude (chỉ đọc) ----------
     async def _generate(self, question: str) -> str:
-        brain = self.deps.active_brain()
+        # KB khách-an-toàn (tuỳ chọn) - 1 file FAQ do Sếp biên tập, KHÔNG phải brain nội bộ.
+        kb = ""
+        kbf = os.getenv("ZALO_KB_FILE", "").strip()
+        if kbf:
+            try:
+                kb = Path(kbf).read_text(encoding="utf-8")[:20000]
+            except Exception as e:
+                _log(f"KB read fail: {e}")
         cli = ClaudeCLI(
-            system_prompt=_reply_system_prompt(
-                self.deps.build_system_prompt(brain), self.agent_name, self.agent_role),
-            cwd=self.deps.brain_root(brain),
+            system_prompt=_reply_system_prompt(self.agent_name, self.agent_role, kb),
+            cwd=self.deps.brain_root(self.deps.active_brain()),
             tag="zalo-reply",
-            allowed_tools=self.deps.readonly_tools,
         )
-        cli.disallowed_tools = ["Bash", "Task"]
-        cli.model = self.deps.aux_model() or None
+        # NHANH: model gọn (sonnet mặc định) + KHÔNG cho lục file (tránh chậm + lộ dữ liệu nội bộ)
+        cli.model = os.getenv("ZALO_MODEL", "sonnet") or "sonnet"
+        cli.disallowed_tools = ["Read", "Glob", "Grep", "LS", "Bash", "Task",
+                                "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch"]
         cli.max_wall_s = REPLY_MAX_WALL_S
         if not cli.is_available():
             return ESCALATE_TOKEN
