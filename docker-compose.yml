@@ -31,6 +31,10 @@ services:
       OBSIDIAN_VAULT_PATH: /data/vault
       CLAUDE_CWD: /app
       WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN:-boss-update}   # để nút "Cập nhật" gọi được Watchtower
+      # Zalo realtime auto-reply: 1 = bật listener khách nhắn -> trả lời ngay.
+      ZALO_REALTIME: ${ZALO_REALTIME:-}
+      ZALO_BRAIN: ${ZALO_BRAIN:-brain}                     # brain dùng trả lời khách (tên folder trong /brains)
+      ZALO_SHEET_WEBHOOK: ${ZALO_SHEET_WEBHOOK:-}          # URL Google Apps Script log Q&A realtime (tuỳ chọn)
     ports:
       - "7777:7777"                 # Hostinger proxy / VPS map vào cổng này → cấp URL công khai
     volumes:
