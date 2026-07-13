@@ -46,6 +46,8 @@ services:
       ZALO_REALTIME: ${ZALO_REALTIME:-}
       ZALO_BRAIN: ${ZALO_BRAIN:-brain}                     # brain dùng để trả lời khách (tên thư mục trong /brains)
       ZALO_SHEET_WEBHOOK: ${ZALO_SHEET_WEBHOOK:-}          # URL Google Apps Script để log Q&A realtime (tuỳ chọn)
+      ZALO_AGENT_NAME: ${ZALO_AGENT_NAME:-Tuấn}            # tên "nhân viên AI" trả lời khách (1 số Zalo = 1 nhân viên)
+      ZALO_AGENT_ROLE: ${ZALO_AGENT_ROLE:-nhân viên chăm sóc khách hàng của DAS}
     ports:
       - "18777:7777"                 # đường vào dự phòng (nút Open / http://<ip>:7777)
     labels:

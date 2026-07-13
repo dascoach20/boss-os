@@ -46,14 +46,17 @@ REPLY_MAX_WALL_S = 180.0      # trần thời gian Claude sinh 1 câu trả lờ
 ESCALATE_TOKEN = "[[ESCALATE]]"
 
 
-def _reply_system_prompt(brain_prompt: str) -> str:
-    """Nhân cách CSKH của DAS. Ngắn gọn, thân thiện, chốt được câu dễ, escalate câu khó."""
+def _reply_system_prompt(brain_prompt: str, agent_name: str, agent_role: str) -> str:
+    """Nhân cách 1 NHÂN VIÊN AI của DAS (có tên riêng). Ngắn gọn, thân thiện, chốt câu dễ, escalate câu khó."""
     return (
         brain_prompt
-        + "\n\n=== VAI TRÒ: TRỢ LÝ CHĂM SÓC KHÁCH HÀNG ZALO CỦA DAS ===\n"
-        "Bạn đang trả lời TRỰC TIẾP một khách hàng nhắn tin trên Zalo. Trả lời bằng tiếng Việt, "
-        "xưng 'em', gọi khách 'anh/chị', giọng thân thiện - chuyên nghiệp - ngắn gọn như người thật đang chat "
-        "(2-5 câu, KHÔNG markdown, KHÔNG gạch đầu dòng dài dòng).\n"
+        + f"\n\n=== BẠN LÀ {agent_name.upper()} - {agent_role} ===\n"
+        f"Bạn tên là {agent_name}, là {agent_role}. Bạn đang trả lời TRỰC TIẾP một khách hàng "
+        "nhắn tin trên Zalo (coi như một nhân viên thật đang chat). Trả lời bằng tiếng Việt, "
+        f"xưng 'em' và dùng tên '{agent_name}' khi phù hợp (vd lời chào đầu: 'Dạ em {agent_name} bên DAS đây ạ'), "
+        "gọi khách 'anh/chị', giọng thân thiện - chuyên nghiệp - ngắn gọn như người thật đang chat "
+        "(2-5 câu, KHÔNG markdown, KHÔNG gạch đầu dòng dài dòng). Nhất quán 1 danh tính duy nhất, "
+        "không bao giờ tự nhận là AI/bot/trợ lý ảo.\n"
         "- Câu hỏi cơ bản (giới thiệu sản phẩm, lịch, cách học, thông tin đã có trong tri thức/bộ nhớ) -> "
         "TRẢ LỜI thẳng, tự tin, dựa trên tri thức DAS.\n"
         "- Nếu cần tra tài liệu -> cứ đọc tri thức rồi trả lời.\n"
@@ -81,6 +84,10 @@ class ZaloRealtime:
         self.deps = deps
         self.proc: Optional[subprocess.Popen] = None
         self.home: Optional[str] = None
+        # Danh tính "nhân viên AI" (1 số Zalo = 1 nhân viên). Đổi qua env cho từng account.
+        self.agent_name = os.getenv("ZALO_AGENT_NAME", "Tuấn").strip() or "Tuấn"
+        self.agent_role = os.getenv("ZALO_AGENT_ROLE", "nhân viên chăm sóc khách hàng của DAS").strip() \
+            or "nhân viên chăm sóc khách hàng của DAS"
         self.status = "off"          # off | running | no-account | error
         self.last_error = ""
         self.started_at = 0.0
@@ -135,7 +142,8 @@ class ZaloRealtime:
     async def _generate(self, question: str) -> str:
         brain = self.deps.active_brain()
         cli = ClaudeCLI(
-            system_prompt=_reply_system_prompt(self.deps.build_system_prompt(brain)),
+            system_prompt=_reply_system_prompt(
+                self.deps.build_system_prompt(brain), self.agent_name, self.agent_role),
             cwd=self.deps.brain_root(brain),
             tag="zalo-reply",
             allowed_tools=self.deps.readonly_tools,
@@ -301,6 +309,7 @@ class ZaloRealtime:
             self.last_error = self.last_error or "listener đã thoát"
         return {
             "status": self.status, "running": running,
+            "agent_name": self.agent_name, "agent_role": self.agent_role,
             "home": self.home, "replied": self.replied,
             "escalated": self.escalated, "last_error": self.last_error,
             "sheet_webhook": bool(os.getenv("ZALO_SHEET_WEBHOOK", "").strip()),
