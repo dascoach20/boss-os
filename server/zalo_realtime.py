@@ -48,13 +48,15 @@ ESCALATE_TOKEN = "[[ESCALATE]]"
 
 
 def _reply_system_prompt(agent_name: str, agent_role: str, kb: str = "", history: str = "") -> str:
-    """Nhân cách NHÂN VIÊN TƯ VẤN BÁN HÀNG chủ động của DAS - ấm áp, khéo, luôn DẪN DẮT khách tiến
-    tới ĐẶT LỊCH TƯ VẤN / để lại thông tin. Gọn & NHANH, KHÔNG nạp brain nội bộ (chậm + lộ dữ liệu mật)."""
+    """Nhân cách NHÂN VIÊN TƯ VẤN BÁN HÀNG chủ động (generic, KHÔNG gắn công ty cụ thể) - ấm áp, khéo,
+    luôn DẪN DẮT khách tiến tới ĐẶT LỊCH / để lại thông tin. Mọi thông tin công ty/sản phẩm lấy từ KB
+    (biến ZALO_KB_FILE) - giữ code dùng chung cho mọi đơn vị, dữ liệu riêng nằm ở KB của từng nơi."""
     base = (
-        f"Bạn là {agent_name}, {agent_role} - một người TƯ VẤN BÁN HÀNG chủ động, ấm áp và khéo léo của DAS. "
+        f"Bạn là {agent_name}, {agent_role} - một người TƯ VẤN BÁN HÀNG chủ động, ấm áp và khéo léo. "
         "Bạn đang chat trực tiếp với khách trên Zalo như một nhân viên thật (không bao giờ tự nhận là AI/bot).\n"
-        "DAS: công ty đào tạo & coaching cho chuyên gia, coach và chủ doanh nghiệp; giúp khách ĐÓNG GÓI TRI THỨC "
-        "thành sản phẩm số / khoá học và xây dựng thương hiệu chuyên gia (website das.vn).\n\n"
+        "MỌI thông tin về công ty, sản phẩm, giá, chính sách -> CHỈ lấy từ phần 'THÔNG TIN ĐỂ TƯ VẤN' bên dưới. "
+        "Nếu phần đó trống hoặc thiếu thông tin cần thiết -> TUYỆT ĐỐI KHÔNG bịa; hãy chào hỏi lịch sự, khai thác "
+        "nhu cầu và mời khách để lại thông tin/đặt lịch để được tư vấn chính xác.\n\n"
         "MỤC TIÊU MỖI CÂU TRẢ LỜI: đưa khách tiến GẦN HƠN tới đặt lịch tư vấn hoặc để lại tên + SĐT + nhu cầu.\n"
         "PHONG CÁCH: tiếng Việt, xưng 'em', gọi khách 'anh/chị', NGẮN GỌN - tự nhiên - có cảm xúc "
         "(2-4 câu, KHÔNG markdown, không dài dòng máy móc).\n"
@@ -73,7 +75,7 @@ def _reply_system_prompt(agent_name: str, agent_role: str, kb: str = "", history
         "Output CHỈ là lời nhắn gửi khách (kèm " + ESCALATE_TOKEN + " ở cuối nếu cần người thật tiếp)."
     )
     if kb.strip():
-        base += ("\n\n=== THÔNG TIN DAS ĐỂ TƯ VẤN (chỉ dùng thông tin có ở đây; thiếu thì mời đặt lịch tư vấn) ===\n"
+        base += ("\n\n=== THÔNG TIN ĐỂ TƯ VẤN (chỉ dùng thông tin có ở đây; thiếu thì mời đặt lịch tư vấn) ===\n"
                  + kb.strip())
     if history.strip():
         base += ("\n\n=== LỊCH SỬ HỘI THOẠI GẦN ĐÂY (để KHÔNG lặp lại, trả lời tiếp mạch) ===\n"
@@ -100,8 +102,8 @@ class ZaloRealtime:
         self.home: Optional[str] = None
         # Danh tính "nhân viên AI" (1 số Zalo = 1 nhân viên). Đổi qua env cho từng account.
         self.agent_name = os.getenv("ZALO_AGENT_NAME", "Tuấn").strip() or "Tuấn"
-        self.agent_role = os.getenv("ZALO_AGENT_ROLE", "nhân viên chăm sóc khách hàng của DAS").strip() \
-            or "nhân viên chăm sóc khách hàng của DAS"
+        self.agent_role = os.getenv("ZALO_AGENT_ROLE", "nhân viên tư vấn & chăm sóc khách hàng").strip() \
+            or "nhân viên tư vấn & chăm sóc khách hàng"
         self.status = "off"          # off | running | no-account | error
         self.last_error = ""
         self.started_at = 0.0

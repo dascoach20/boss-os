@@ -36,7 +36,7 @@ services:
       ZALO_BRAIN: ${ZALO_BRAIN:-brain}                     # brain dùng trả lời khách (tên folder trong /brains)
       ZALO_SHEET_WEBHOOK: ${ZALO_SHEET_WEBHOOK:-}          # URL Google Apps Script log Q&A realtime (tuỳ chọn)
       ZALO_AGENT_NAME: ${ZALO_AGENT_NAME:-Tuấn}            # tên "nhân viên AI" trả lời khách
-      ZALO_AGENT_ROLE: ${ZALO_AGENT_ROLE:-nhân viên chăm sóc khách hàng của DAS}
+      ZALO_AGENT_ROLE: ${ZALO_AGENT_ROLE:-nhân viên tư vấn & chăm sóc khách hàng}
     ports:
       - "7777:7777"                 # Hostinger proxy / VPS map vào cổng này → cấp URL công khai
     volumes:
