@@ -28,7 +28,7 @@ from typing import Callable, Optional
 import httpx
 from fastapi import Request
 
-from claude_cli import ClaudeCLI
+from claude_cli import find_claude_cli
 import mcp_store
 
 
@@ -154,34 +154,44 @@ class ZaloRealtime:
                 kb = Path(kbf).read_text(encoding="utf-8")[:20000]
             except Exception as e:
                 _log(f"KB read fail: {e}")
-        # cwd TRUNG TÍNH (KHÔNG phải brain): Claude Code CLI tự nạp project context từ cwd -
-        # nếu trỏ vào brain 61MB thì mỗi câu trả lời chậm khủng khiếp. Dùng /tmp cho nhẹ & nhanh.
-        cli = ClaudeCLI(
-            system_prompt=_reply_system_prompt(self.agent_name, self.agent_role, kb),
-            cwd=os.getenv("ZALO_CWD", "/tmp"),
-            tag="zalo-reply",
-        )
-        # NHANH: model gọn (sonnet mặc định) + KHÔNG cho lục file (tránh chậm + lộ dữ liệu nội bộ)
-        cli.model = os.getenv("ZALO_MODEL", "sonnet") or "sonnet"
-        cli.disallowed_tools = ["Read", "Glob", "Grep", "Bash", "Task",
-                                "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch"]
-        cli.max_wall_s = REPLY_MAX_WALL_S
-        if not cli.is_available():
+        claude = find_claude_cli()
+        if not claude:
             return ESCALATE_TOKEN
+        sys_prompt = _reply_system_prompt(self.agent_name, self.agent_role, kb)
         prompt = f"Khách hàng vừa nhắn trên Zalo:\n\"\"\"\n{question}\n\"\"\"\nTrả lời khách."
-        out, err = "", ""
+        # Gọi claude TRỰC TIẾP kiểu 'text' (KHÔNG dùng ClaudeCLI: tránh --dangerously-skip-permissions
+        # + stream-json làm CLI treo khi .claude.json ở trạng thái first-run trong container).
+        # KHÔNG dùng tool (reply thuần) -> nhanh (~4s) + không lộ dữ liệu nội bộ.
+        args = [
+            claude, "-p", prompt,
+            "--model", (os.getenv("ZALO_MODEL", "sonnet") or "sonnet"),
+            "--append-system-prompt", sys_prompt,
+            "--output-format", "text",
+            "--disallowedTools", "Read,Glob,Grep,Bash,Task,Write,Edit,NotebookEdit,WebFetch,WebSearch",
+        ]
+        proc = None
         try:
-            async for ev in cli.query(prompt):
-                if ev["type"] == "final":
-                    out = ev.get("content", "") or out
-                elif ev["type"] == "error":
-                    err = ev.get("content", "") or err
-        except Exception as e:
-            err = f"{type(e).__name__}: {e}"
-        if err and not out:
-            _log(f"generate error: {err}")
+            proc = await asyncio.create_subprocess_exec(
+                *args, cwd=os.getenv("ZALO_CWD", "/tmp"),
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            out, err = await asyncio.wait_for(proc.communicate(), timeout=REPLY_MAX_WALL_S)
+        except asyncio.TimeoutError:
+            if proc:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+            _log("generate timeout")
             return ESCALATE_TOKEN
-        return (out or "").strip()
+        except Exception as e:
+            _log(f"generate error: {type(e).__name__}: {e}")
+            return ESCALATE_TOKEN
+        text = (out or b"").decode("utf-8", "replace").strip()
+        if not text:
+            _log(f"generate empty; stderr={(err or b'').decode('utf-8','replace')[:200]}")
+            return ESCALATE_TOKEN
+        return text
 
     async def _generate_with_reassurance(self, thread_id: str, question: str) -> str:
         """Sinh câu trả lời; nếu lâu hơn REASSURE_AFTER_S thì gửi tin trấn an giữa chừng."""
