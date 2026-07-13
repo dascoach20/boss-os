@@ -21,6 +21,7 @@ import os
 import subprocess
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
@@ -37,35 +38,46 @@ def _log(msg: str) -> None:
 
 
 # ---- Tin nhắn cố định (Sếp chỉnh lời tuỳ ý ở đây) ----
-ACK_MSG = "Dạ em nhận được tin của mình rồi ạ, em xem và phản hồi ngay ạ 🌸"
-REASSURE_MSG = "Anh/chị chờ em một chút xíu nhé, phần này hơi nhiều thông tin, em tổng hợp rồi trả lời ngay ạ 🙏"
-HOLD_MSG = "Dạ câu này em xin phép xác nhận lại với bên em để trả lời anh/chị chính xác nhất, em phản hồi sớm nhất có thể ạ 🤝"
+# Chỉ còn tin TRẤN AN khi sinh câu trả lời lâu (>REASSURE_AFTER_S). BỎ tin "đã nhận" mỗi lượt
+# (gây lặp/robot khi reply đã nhanh ~6s) - câu trả lời thật chính là sự tiếp nhận.
+REASSURE_MSG = "Anh/chị chờ em xíu nhé, em đang tổng hợp thông tin để trả lời anh/chị cho kỹ ạ 🙏"
 
 REASSURE_AFTER_S = 15.0       # sinh câu trả lời lâu hơn ngần này (giây) -> gửi tin trấn an
 REPLY_MAX_WALL_S = 180.0      # trần thời gian Claude sinh 1 câu trả lời
 ESCALATE_TOKEN = "[[ESCALATE]]"
 
 
-def _reply_system_prompt(agent_name: str, agent_role: str, kb: str = "") -> str:
-    """Nhân cách 1 NHÂN VIÊN AI của DAS (gọn, NHANH). Trả lời câu dễ, escalate câu cần chi tiết/số liệu.
-    KHÔNG nạp brain nội bộ (chậm + rủi ro lộ dữ liệu mật) - chỉ dùng persona + KB khách-an-toàn (nếu có)."""
+def _reply_system_prompt(agent_name: str, agent_role: str, kb: str = "", history: str = "") -> str:
+    """Nhân cách NHÂN VIÊN TƯ VẤN BÁN HÀNG chủ động của DAS - ấm áp, khéo, luôn DẪN DẮT khách tiến
+    tới ĐẶT LỊCH TƯ VẤN / để lại thông tin. Gọn & NHANH, KHÔNG nạp brain nội bộ (chậm + lộ dữ liệu mật)."""
     base = (
-        f"BẠN LÀ {agent_name.upper()} - {agent_role}.\n"
-        f"Bạn tên là {agent_name}, đang trả lời TRỰC TIẾP một khách nhắn tin trên Zalo (như một nhân viên thật). "
-        "Trả lời bằng tiếng Việt, xưng 'em', dùng tên khi phù hợp "
-        f"(vd lời chào: 'Dạ em {agent_name} bên DAS đây ạ'), gọi khách 'anh/chị', giọng thân thiện - "
-        "chuyên nghiệp - NGẮN GỌN như người thật đang chat (2-5 câu, KHÔNG markdown). "
-        "Không bao giờ tự nhận là AI/bot/trợ lý ảo.\n"
-        "DAS là công ty đào tạo & coaching cho chuyên gia, coach và chủ doanh nghiệp (website das.vn).\n"
-        "- Câu cơ bản (DAS là gì, làm về gì, cách tham gia/tìm hiểu, thông tin chung) -> TRẢ LỜI thẳng, tự tin, ngắn.\n"
-        "- Câu cần SỐ LIỆU/GIÁ/CAM KẾT cụ thể, chuyện tiền/hợp đồng, khiếu nại nặng, HOẶC bạn KHÔNG chắc chắn "
-        "-> trả về DUY NHẤT một dòng: " + ESCALATE_TOKEN + "\n"
-        "Tuyệt đối KHÔNG bịa giá/cam kết/chính sách. Không chắc thì escalate. "
-        "Output CHỈ là lời nhắn gửi khách (hoặc đúng token escalate), không thêm gì ngoài lề."
+        f"Bạn là {agent_name}, {agent_role} - một người TƯ VẤN BÁN HÀNG chủ động, ấm áp và khéo léo của DAS. "
+        "Bạn đang chat trực tiếp với khách trên Zalo như một nhân viên thật (không bao giờ tự nhận là AI/bot).\n"
+        "DAS: công ty đào tạo & coaching cho chuyên gia, coach và chủ doanh nghiệp; giúp khách ĐÓNG GÓI TRI THỨC "
+        "thành sản phẩm số / khoá học và xây dựng thương hiệu chuyên gia (website das.vn).\n\n"
+        "MỤC TIÊU MỖI CÂU TRẢ LỜI: đưa khách tiến GẦN HƠN tới đặt lịch tư vấn hoặc để lại tên + SĐT + nhu cầu.\n"
+        "PHONG CÁCH: tiếng Việt, xưng 'em', gọi khách 'anh/chị', NGẮN GỌN - tự nhiên - có cảm xúc "
+        "(2-4 câu, KHÔNG markdown, không dài dòng máy móc).\n"
+        "NGUYÊN TẮC (rất quan trọng):\n"
+        "1. KHÔNG lặp lại lời chào/giới thiệu nếu đã chào ở tin trước (nhìn LỊCH SỬ bên dưới). Vào thẳng nội dung.\n"
+        "2. LUÔN kết bằng 1 câu HỎI KHƠI GỢI hoặc 1 lời MỜI HÀNH ĐỘNG - khai thác: khách đang làm gì, "
+        "mong muốn/khó khăn gì, để tư vấn đúng và dẫn tới bước tiếp theo.\n"
+        "3. Khi khách quan tâm/muốn đăng ký -> CHỦ ĐỘNG chốt: xin tên + SĐT + khung giờ tiện để bên em gọi/đặt "
+        "lịch tư vấn cụ thể. Tạo giá trị & lý do nên tư vấn sớm.\n"
+        "4. Khi bạn CHƯA biết chi tiết (giá chính xác, lịch khai giảng, cam kết cụ thể): ĐỪNG chỉ nói 'chờ'. "
+        "Hãy vẫn giữ nhịp bán hàng: 'để em kết nối anh/chị với chuyên gia tư vấn để báo chính xác nhất, "
+        "anh/chị cho em xin SĐT và giờ tiện nhé' -> lấy thông tin/đặt lịch. TUYỆT ĐỐI KHÔNG bịa giá/cam kết.\n"
+        "5. Chỉ khi khách MUỐN gặp người thật, khiếu nại nặng, hoặc yêu cầu vượt tầm -> vẫn trả lời khách tử tế + "
+        "xin thông tin, RỒI thêm token " + ESCALATE_TOKEN + " ở CUỐI (để báo quản lý follow-up). "
+        "Token này khách KHÔNG thấy.\n"
+        "Output CHỈ là lời nhắn gửi khách (kèm " + ESCALATE_TOKEN + " ở cuối nếu cần người thật tiếp)."
     )
     if kb.strip():
-        base += ("\n\n=== THÔNG TIN DAS ĐỂ TRẢ LỜI (chỉ nói những gì có ở đây, thiếu thì escalate) ===\n"
+        base += ("\n\n=== THÔNG TIN DAS ĐỂ TƯ VẤN (chỉ dùng thông tin có ở đây; thiếu thì mời đặt lịch tư vấn) ===\n"
                  + kb.strip())
+    if history.strip():
+        base += ("\n\n=== LỊCH SỬ HỘI THOẠI GẦN ĐÂY (để KHÔNG lặp lại, trả lời tiếp mạch) ===\n"
+                 + history.strip())
     return base
 
 
@@ -95,9 +107,12 @@ class ZaloRealtime:
         self.started_at = 0.0
         self.replied = 0
         self.escalated = 0
-        # chống trả lời trùng / xử lý song song cùng 1 khách
-        self._threads: dict[str, float] = {}
-        self._io = asyncio.Lock()
+        # chống trùng: msgId đã xử lý (webhook/listener có thể bắn 1 tin >1 lần)
+        self._seen_ids: deque = deque(maxlen=2000)
+        # serialize theo từng khách (không trả lời song song 2 tin cùng thread -> tránh trả lời chồng)
+        self._thread_locks: dict[str, asyncio.Lock] = {}
+        # lịch sử hội thoại ngắn theo thread (để không lặp lời chào + trả lời tiếp mạch)
+        self._history: dict[str, deque] = {}
 
     # ---------- tìm tài khoản Zalo đã kết nối ----------
     def _zalo_home(self) -> Optional[str]:
@@ -145,7 +160,7 @@ class ZaloRealtime:
         await asyncio.to_thread(self._send_sync, thread_id, text)
 
     # ---------- sinh câu trả lời bằng Claude (chỉ đọc) ----------
-    async def _generate(self, question: str) -> str:
+    async def _generate(self, question: str, history: str = "") -> str:
         # KB khách-an-toàn (tuỳ chọn) - 1 file FAQ do Sếp biên tập, KHÔNG phải brain nội bộ.
         kb = ""
         kbf = os.getenv("ZALO_KB_FILE", "").strip()
@@ -157,7 +172,7 @@ class ZaloRealtime:
         claude = find_claude_cli()
         if not claude:
             return ESCALATE_TOKEN
-        sys_prompt = _reply_system_prompt(self.agent_name, self.agent_role, kb)
+        sys_prompt = _reply_system_prompt(self.agent_name, self.agent_role, kb, history)
         prompt = f"Khách hàng vừa nhắn trên Zalo:\n\"\"\"\n{question}\n\"\"\"\nTrả lời khách."
         # Gọi claude TRỰC TIẾP kiểu 'text' (KHÔNG dùng ClaudeCLI: tránh --dangerously-skip-permissions
         # + stream-json làm CLI treo khi .claude.json ở trạng thái first-run trong container).
@@ -193,9 +208,9 @@ class ZaloRealtime:
             return ESCALATE_TOKEN
         return text
 
-    async def _generate_with_reassurance(self, thread_id: str, question: str) -> str:
+    async def _generate_with_reassurance(self, thread_id: str, question: str, history: str = "") -> str:
         """Sinh câu trả lời; nếu lâu hơn REASSURE_AFTER_S thì gửi tin trấn an giữa chừng."""
-        task = asyncio.create_task(self._generate(question))
+        task = asyncio.create_task(self._generate(question, history))
         done, _ = await asyncio.wait({task}, timeout=REASSURE_AFTER_S)
         if task not in done:
             await self._send(thread_id, REASSURE_MSG)
@@ -235,42 +250,58 @@ class ZaloRealtime:
             _log(f"event: {json.dumps(payload, ensure_ascii=False)[:500]}")
         except Exception:
             pass
-        thread_id, text, is_self, name = self._parse(payload)
+        thread_id, text, is_self, name, msgid = self._parse(payload)
         if not thread_id or not text or is_self:
             return
-        # chống xử lý chồng cùng 1 khách trong 3s (gộp tin bắn liên tiếp)
-        now = time.time()
-        async with self._io:
-            last = self._threads.get(thread_id, 0)
-            self._threads[thread_id] = now
-        # 1) ACK tức thì
-        await self._send(thread_id, ACK_MSG)
-        # 2) sinh câu trả lời (có trấn an nếu lâu)
-        reply = await self._generate_with_reassurance(thread_id, text)
-        # 3) escalate hay trả lời
-        if not reply or reply.strip() == ESCALATE_TOKEN or ESCALATE_TOKEN in reply:
-            self.escalated += 1
-            await self._send(thread_id, HOLD_MSG)
-            try:
-                await self.deps.notify_owner(
-                    "🔔 KHÁCH ZALO CẦN SẾP TRẢ LỜI\n"
-                    f"Khách: {name or '(không rõ tên)'} · thread {thread_id}\n"
-                    f"Khách hỏi: {text}\n\n"
-                    "Bot đã báo khách chờ. Sếp trả lời giúp nhé."
-                )
-            except Exception as e:
-                _log(f"notify owner fail: {e}")
-            return
-        self.replied += 1
-        await self._send(thread_id, reply)
-        await self._log_qa(text, reply, thread_id, name or "")
+        # (a) CHỐNG TRÙNG: cùng msgId đã xử lý -> bỏ (listener/webhook đôi khi bắn lặp)
+        if msgid:
+            if msgid in self._seen_ids:
+                return
+            self._seen_ids.append(msgid)
+        # (b) SERIALIZE theo khách: 1 thread chỉ xử lý 1 tin 1 lúc -> tránh trả lời chồng lên nhau
+        lock = self._thread_locks.get(thread_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._thread_locks[thread_id] = lock
+        async with lock:
+            hist = self._history.get(thread_id)
+            history_str = "\n".join(hist) if hist else ""
+            # sinh câu trả lời (KHÔNG gửi ACK riêng nữa - câu trả lời ~6s chính là sự tiếp nhận;
+            # chỉ gửi tin trấn an nếu > REASSURE_AFTER_S)
+            reply = await self._generate_with_reassurance(thread_id, text, history_str)
+            escalate = bool(reply) and ESCALATE_TOKEN in reply
+            reply = (reply or "").replace(ESCALATE_TOKEN, "").strip()
+            if not reply:
+                # sinh lỗi/rỗng -> vẫn giữ khách + báo Sếp
+                reply = ("Dạ em ghi nhận rồi ạ, em nhờ chuyên gia bên em tư vấn kỹ hơn cho anh/chị. "
+                         "Anh/chị cho em xin số điện thoại và giờ tiện để bên em gọi lại tư vấn cụ thể nhé ạ 🙏")
+                escalate = True
+            await self._send(thread_id, reply)
+            await self._log_qa(text, reply, thread_id, name or "")
+            # cập nhật lịch sử hội thoại (giữ 6 lượt gần nhất)
+            h = self._history.setdefault(thread_id, deque(maxlen=6))
+            h.append(f"Khách: {text}")
+            h.append(f"{self.agent_name}: {reply}")
+            if escalate:
+                self.escalated += 1
+                try:
+                    await self.deps.notify_owner(
+                        "🔔 KHÁCH ZALO CẦN SẾP TIẾP\n"
+                        f"Khách: {name or '(không rõ tên)'} · thread {thread_id}\n"
+                        f"Khách hỏi: {text}\n"
+                        f"{self.agent_name} đã trả lời & xin thông tin. Sếp vào tiếp/duyệt giúp nhé."
+                    )
+                except Exception as e:
+                    _log(f"notify owner fail: {e}")
+            else:
+                self.replied += 1
 
     def _parse(self, p: dict):
         """Rút threadId + text + is_self + tên khách từ payload webhook của `zalo listen`.
         Schema thật (event message): {event, threadId, type, isSelf, uidFrom, dName, content}.
         content là string với tin text, là object với đính kèm (bỏ qua). Có fallback phòng đổi version."""
         if not isinstance(p, dict):
-            return None, None, False, None
+            return None, None, False, None, None
         # message event phẳng; friend/group event lồng trong 'data' -> ưu tiên field phẳng của message
         thread = (p.get("threadId") or p.get("thread_id") or p.get("uidFrom") or p.get("fromId"))
         content = p.get("content")
@@ -279,7 +310,9 @@ class ZaloRealtime:
         text = content if isinstance(content, str) else ""   # chỉ trả lời tin dạng text
         is_self = bool(p.get("isSelf") or p.get("self") or p.get("fromMe"))
         name = p.get("dName") or p.get("displayName") or p.get("name")
-        return (str(thread) if thread else None), (text.strip() if text else None), is_self, name
+        msgid = p.get("msgId") or p.get("cliMsgId") or p.get("msgID") or p.get("id")
+        return (str(thread) if thread else None), (text.strip() if text else None), is_self, name, \
+            (str(msgid) if msgid else None)
 
     # ---------- vòng đời listener ----------
     def start(self) -> dict:
