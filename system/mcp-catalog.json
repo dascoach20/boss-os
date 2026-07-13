@@ -68,7 +68,7 @@
         "danger": ["*send*"]
       },
       "default_perm": "full",
-      "risk": "Zalo KHÔNG hỗ trợ chính thức công cụ này (API không chính thức qua zca-js). Tài khoản của bạn CÓ THỂ bị Zalo hạn chế hoặc KHOÁ, nhất là khi gửi tin tự động số lượng lớn. Khuyến nghị dùng tài khoản phụ. Quyền GỬI TIN đang bật - Boss OS chỉ gửi khi bạn yêu cầu trực tiếp trong chat; loop chạy nền không bao giờ được tự gửi.",
+      "risk": "Zalo KHÔNG hỗ trợ chính thức công cụ này (API không chính thức qua zca-js). Tài khoản CÓ THỂ bị Zalo hạn chế hoặc KHOÁ nếu gửi tự động nhiều - hãy dùng tài khoản phụ và gửi vừa phải. ĐƯỢC PHÉP: gửi tin khi bạn yêu cầu trực tiếp trong chat; đọc tin; soạn bản nháp. KHÔNG ĐƯỢC PHÉP: loop/lịch tự bắn tin thẳng ra ngoài mà không có người duyệt. MUỐN LOOP GỬI TIN: đặt loop mode 'full' (mặc định sẽ yêu cầu duyệt) - mỗi lần tới cữ, Boss hỏi admin qua Telegram bằng nút Duyệt/Bỏ qua, duyệt xong mới gửi; quá 60 phút không duyệt thì tự bỏ lần đó. Có thể tắt/bật duyệt riêng từng loop bằng field 'require_approval' trong file loop.",
       "rate_limit": { "calls_per_min": 20 }
     },
     {

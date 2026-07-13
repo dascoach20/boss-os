@@ -55,7 +55,7 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import yaml
 from fastapi import APIRouter, Form, Query
@@ -143,6 +143,7 @@ class LoopDeps:
     notify: Optional[Callable] = None        # async notify(text) - báo Telegram khi auto-pause (tùy chọn)
     apply_mcp: Optional[Callable] = None      # apply_mcp(cli): gắn MCP Boss-quản-lý (config+strict+deny) - loop ĐỌC được dữ liệu thật
     mcp_allow_patterns: Optional[Callable] = None  # () -> ["mcp__<server>", ...] để thêm vào allowlist (MCP mới gọi được)
+    request_approval: Optional[Callable] = None    # async request_approval(aid:str, text:str) -> bool: gửi yêu cầu DUYỆT loop qua Telegram (nút Duyệt/Bỏ qua). Trả True nếu đã gửi.
 
 
 class LoopFeature:
@@ -159,6 +160,11 @@ class LoopFeature:
         self.lock = asyncio.Lock()           # THỰC THI TUẦN TỰ: 1 vòng/lúc trên toàn hệ
         self._running: Optional[Tuple[str, str]] = None   # (brain_root_resolved, slug) đang chạy
         self._migrated = False
+        # Hàng đợi DUYỆT (approval gate): loop cần duyệt sẽ hỏi admin qua Telegram TRƯỚC khi chạy.
+        # key = f"{brain_resolved}::{slug}" -> {id, status(waiting|approved|rejected), created, brain, slug, name}
+        self._approvals: Dict[str, dict] = {}
+        self._approval_seq = 0
+        self.APPROVAL_TIMEOUT = 3600         # giây: quá 60 phút không có phản hồi duyệt → bỏ lần chạy đó
         self.router = self._make_router()
 
     # ══════════════════════ legacy config I/O (giữ chữ ký cho shim main.py) ══════════════════════
@@ -260,6 +266,15 @@ class LoopFeature:
         except (TypeError, ValueError):
             maxr = 0
         prof = "code" if str(fm.get("tools_profile", "") or "").strip().lower() == "code" else "vault-safe"
+        # DUYỆT trước khi chạy: mặc định BẬT cho loop mode 'full' (loại được thao tác thật ra ngoài
+        # như gửi tin); loop có thể tự khai báo require_approval để bật/tắt riêng.
+        ra = fm.get("require_approval")
+        if ra is None:
+            require_approval = (mode == "full")
+        elif isinstance(ra, bool):
+            require_approval = ra
+        else:
+            require_approval = str(ra).strip().lower() in ("1", "true", "yes", "on", "co", "có")
         return {
             # identity = TÊN FILE (stem) - frontmatter slug chỉ để hiển thị, tránh lệch nhau
             "slug": stem,
@@ -270,6 +285,7 @@ class LoopFeature:
             "tools_profile": prof,
             "quiet_hours": str(fm.get("quiet_hours", "") or "").strip(),
             "max_runs_per_day": maxr,
+            "require_approval": require_approval,
             "updated": str(fm.get("updated", "") or ""),
             "body": (body or "").strip(),
         }
@@ -318,7 +334,8 @@ class LoopFeature:
             "enabled": bool(loop["enabled"]), "goal": loop["goal"], "mode": loop["mode"],
             "interval_min": int(loop["interval_min"]), "workspace": loop["workspace"],
             "tools_profile": loop["tools_profile"], "quiet_hours": loop["quiet_hours"],
-            "max_runs_per_day": int(loop["max_runs_per_day"]), "updated": _today(),
+            "max_runs_per_day": int(loop["max_runs_per_day"]),
+            "require_approval": bool(loop["require_approval"]), "updated": _today(),
         }
         y = yaml.safe_dump(fm, allow_unicode=True, sort_keys=False, default_flow_style=False, width=1000).strip()
         d = self._loops_dir(brain)
@@ -459,19 +476,120 @@ class LoopFeature:
             except Exception:
                 continue
             for lp in loops:
+                # Đang chờ/đã duyệt qua Telegram → để _process_approvals lo, không xét due (tránh
+                # loop này chiếm chỗ khiến loop khác không chạy trong lúc chờ người bấm nút).
+                if self._akey(brain, lp["slug"]) in self._approvals:
+                    continue
                 ov = self._eligible_overdue(lp, st_all.get(lp["slug"], {}), now, hour)
                 if ov is not None and (best is None or ov > best[2]):
                     best = (brain, lp, ov)
         return (best[0], best[1]) if best else None
 
+    # ══════════════════════ cửa DUYỆT qua Telegram (approval gate) ══════════════════════
+
+    def _akey(self, brain: str, slug: str) -> str:
+        try:
+            b = str(Path(self.deps.brain_root(brain)).resolve())
+        except Exception:
+            b = str(brain)
+        return f"{b}::{slug}"
+
+    def _needs_approval(self, lp: dict) -> bool:
+        return bool(lp.get("require_approval"))
+
+    def resolve_approval(self, aid: str, approved: bool) -> Optional[str]:
+        """Gọi từ Telegram callback khi admin bấm Duyệt/Bỏ qua. Trả tên loop nếu khớp yêu cầu
+        đang chờ, None nếu đã hết hạn/xử lý rồi."""
+        for pend in self._approvals.values():
+            if pend.get("id") == aid and pend.get("status") == "waiting":
+                pend["status"] = "approved" if approved else "rejected"
+                return pend.get("name") or pend.get("slug")
+        return None
+
+    async def _request_approval(self, brain: str, lp: dict) -> None:
+        """Tạo 1 yêu cầu duyệt + gửi Telegram cho admin. Không chạy loop; chờ admin bấm nút."""
+        slug = lp["slug"]
+        key = self._akey(brain, slug)
+        self._approval_seq += 1
+        aid = str(self._approval_seq)
+        self._approvals[key] = {"id": aid, "status": "waiting", "created": time.time(),
+                                "brain": brain, "slug": slug, "name": lp.get("name") or slug}
+        body = re.sub(r"\s+", " ", (lp.get("body") or "")).strip()
+        summ = (body[:280] + "…") if len(body) > 280 else (body or "(không mô tả)")
+        mins = int(self.APPROVAL_TIMEOUT / 60)
+        text = (f"🔔 Loop cần bạn DUYỆT trước khi chạy\n\n"
+                f"• Loop: {lp.get('name') or slug}\n"
+                f"• Việc sẽ làm: {summ}\n\n"
+                f"Bấm Duyệt để chạy ngay, hoặc Bỏ qua lần này. "
+                f"Không phản hồi trong {mins} phút sẽ tự bỏ qua.")
+        sent = False
+        try:
+            sent = bool(await self.deps.request_approval(aid, text))
+        except Exception as e:
+            print(f"[loop approval send] {e}", file=__import__('sys').stderr)
+        if not sent:
+            # Không gửi được yêu cầu (Telegram tắt/lỗi) → KHÔNG tự chạy; hoãn tới chu kỳ sau.
+            self._approvals.pop(key, None)
+            self._update_state(brain, slug, last_run=time.time(),
+                               last_status="chờ duyệt (Telegram chưa sẵn sàng)")
+            self._log_append(brain, {"title": f"{slug} · loop - cần duyệt",
+                                     "body": "Loop cần duyệt qua Telegram nhưng bot chưa bật/cấu hình. Đã hoãn lần này."})
+
+    async def _process_approvals(self) -> bool:
+        """Xử lý hàng đợi duyệt mỗi tick. Trả True nếu đã chạy 1 loop được duyệt (nhường tick)."""
+        now = time.time()
+        for key, pend in list(self._approvals.items()):
+            status = pend.get("status")
+            brain, slug = pend["brain"], pend["slug"]
+            if status == "approved":
+                self._approvals.pop(key, None)
+                await self.run_cycle(brain, slug, "đã duyệt")
+                return True
+            if status == "rejected":
+                self._approvals.pop(key, None)
+                self._update_state(brain, slug, last_run=now, last_status="bị từ chối (Telegram)")
+                self._log_append(brain, {"title": f"{slug} · loop - từ chối",
+                                         "body": "Admin đã từ chối chạy lần này qua Telegram."})
+                continue
+            # waiting → hết hạn thì bỏ lần này
+            if now - float(pend.get("created", now)) > self.APPROVAL_TIMEOUT:
+                self._approvals.pop(key, None)
+                self._update_state(brain, slug, last_run=now, last_status="quá hạn duyệt")
+                self._log_append(brain, {"title": f"{slug} · loop - quá hạn duyệt",
+                                         "body": f"Không có phản hồi duyệt sau {int(self.APPROVAL_TIMEOUT/60)} phút → bỏ lần này."})
+                if self.deps.notify:
+                    try:
+                        asyncio.create_task(self.deps.notify(
+                            f"⏱ Loop '{pend.get('name', slug)}' quá hạn chờ duyệt "
+                            f"({int(self.APPROVAL_TIMEOUT/60)} phút) → đã bỏ lần chạy này."))
+                    except Exception:
+                        pass
+        return False
+
     async def tick(self) -> None:
-        """Scheduler gọi mỗi ~30s: chọn TỐI ĐA 1 loop quá hạn lâu nhất rồi chạy (tuần tự)."""
+        """Scheduler gọi mỗi ~30s: xử lý duyệt, rồi chọn TỐI ĐA 1 loop quá hạn lâu nhất để chạy
+        (loop cần duyệt sẽ HỎI admin qua Telegram trước, chỉ chạy khi được duyệt)."""
         self.ensure_migrated()
         if self.lock.locked():
             return
+        # 1) chạy loop vừa được duyệt / dọn yêu cầu hết hạn
+        if await self._process_approvals():
+            return
+        # 2) chọn loop đến hạn
         target = self._pick_due()
-        if target:
-            await self.run_cycle(target[0], target[1]["slug"], "scheduled")
+        if not target:
+            return
+        brain, lp = target[0], target[1]
+        # 3) cần duyệt → gửi yêu cầu qua Telegram, chưa chạy; KHÔNG có kênh duyệt thì HOÃN
+        #    (tuyệt đối không tự chạy loop cần-duyệt khi thiếu kênh xác nhận).
+        if self._needs_approval(lp):
+            if self.deps.request_approval is None:
+                self._update_state(brain, lp["slug"], last_run=time.time(),
+                                   last_status="cần duyệt (chưa có kênh Telegram)")
+                return
+            await self._request_approval(brain, lp)
+            return
+        await self.run_cycle(brain, lp["slug"], "scheduled")
 
     async def run_due(self, reason: str = "scheduled") -> dict:
         """Shim run_loop_cycle của main.py: chạy loop đến hạn nhất (nếu có)."""

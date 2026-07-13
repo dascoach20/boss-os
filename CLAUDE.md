@@ -45,7 +45,7 @@ updated: <YYYY-MM-DD>
 <Mô tả nhiệm vụ: mỗi vòng Boss OS làm ĐÚNG việc này. Viết rõ, tự-đủ - đây chính là prompt của loop.>
 ```
 - Đây là format ĐƠN GIẢN (mặc định): thân file = mô tả việc loop làm mỗi vòng. Loop chạy nền mặc định **đọc được dữ liệu thật qua MCP** (POS/quảng cáo/lịch...) + thao tác file trong vault.
-- Trường nâng cao (KHÔNG bắt buộc, chỉ thêm khi user cần): `goal: business` (tự bơm số liệu KD mỗi vòng), `quiet_hours: "23-07"` (giờ im lặng), `max_runs_per_day: N`, `workspace: <path>` + `tools_profile: code` (loop sửa mã trên thư mục ngoài - Bash/Web, KHÔNG MCP).
+- Trường nâng cao (KHÔNG bắt buộc, chỉ thêm khi user cần): `goal: business` (tự bơm số liệu KD mỗi vòng), `quiet_hours: "23-07"` (giờ im lặng), `max_runs_per_day: N`, `require_approval: true|false` (hỏi admin duyệt qua Telegram trước mỗi lần chạy tự động - mặc định true cho `mode: full`), `workspace: <path>` + `tools_profile: code` (loop sửa mã trên thư mục ngoài - Bash/Web, KHÔNG MCP).
 
 **3 mức quyền của loop (mode):**
 - `suggest`: chỉ đọc (kể cả đọc MCP) + gợi ý, không ghi file. An toàn nhất - MẶC ĐỊNH.
@@ -56,6 +56,7 @@ updated: <YYYY-MM-DD>
 - Loop do chat tạo LUÔN mặc định `mode: suggest` + `enabled: false`. KHÔNG bao giờ tự đặt `mode: full`.
 - CHỈ đặt `mode: full` khi user YÊU CẦU RÕ RÀNG và dứt khoát cho loop đó toàn quyền (vd "cho nó tự chạy quảng cáo luôn", "full quyền", "tự làm hết không cần hỏi"). Khi đó BẮT BUỘC cảnh báo lại rủi ro bằng lời trước khi tạo, và vẫn để `enabled: false` để user tự bật.
 - Với loop `auto`/`suggest`: hành động tiền/đơn/đăng bài vẫn LUÔN cấm tự làm - chỉ ghi nháp để user duyệt.
+- **Cửa DUYỆT qua Telegram**: loop `mode: full` MẶC ĐỊNH phải hỏi admin duyệt qua Telegram trước mỗi lần chạy tự động (nút Duyệt/Bỏ qua; quá 60 phút không phản hồi thì bỏ lần đó). Bấm Chạy ngay thủ công thì KHÔNG cần duyệt. Điều khiển bằng field `require_approval: true|false` trong file loop (mặc định true cho `full`, false cho `auto`/`suggest`). Muốn 1 loop `auto`/`suggest` cũng phải duyệt thì đặt `require_approval: true`. Cần bot Telegram đã bật thì cửa duyệt mới hoạt động; chưa bật thì loop cần-duyệt sẽ hoãn (không tự chạy).
 - Sau khi điều phối, báo cáo NGẮN bằng văn nói: đã quyết định gì, tạo file nào, chạy khi nào, theo dõi ở đâu. Không bảng, không em dash.
 
 ## Làm rõ trước khi trả lời (prompt chuẩn)

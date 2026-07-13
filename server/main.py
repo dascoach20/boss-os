@@ -2568,6 +2568,22 @@ async def _loop_notify(text: str) -> None:
         print(f"[loop notify] {e}", file=__import__('sys').stderr)
 
 
+async def _loop_request_approval(aid: str, text: str) -> bool:
+    """Gửi yêu cầu DUYỆT loop qua Telegram (nút Duyệt/Bỏ qua) tới chủ bot. Trả True nếu đã gửi.
+    Kết quả bấm nút xử lý ở _tg_callback → loop_feature.resolve_approval(aid, ok)."""
+    try:
+        if not (_TG_BOT and _TG_BOT._task and not _TG_BOT._task.done() and _TG_BOT.chat_ids):
+            return False
+        kb = {"inline_keyboard": [[
+            {"text": "✅ Duyệt", "callback_data": f"lap:ok:{aid}"},
+            {"text": "❌ Bỏ qua", "callback_data": f"lap:no:{aid}"},
+        ]]}
+        return await _TG_BOT.send_text(text, reply_markup=kb, chat=_TG_BOT.chat_ids[0])
+    except Exception as e:
+        print(f"[loop approval send] {e}", file=__import__('sys').stderr)
+        return False
+
+
 def _loop_mcp_allow():
     """Pattern MCP cho allowlist của loop. Hub bật: mọi tool nằm dưới server 'boss' → 1 pattern;
     quyền đọc/ghi thật sự do hub chặn theo X-Boss-Mode. Hub tắt: 'mcp__<namespace>' như cũ."""
@@ -2596,6 +2612,7 @@ loop_feature = self_improve.register(app, self_improve.LoopDeps(
     notify=_loop_notify,
     apply_mcp=_apply_mcp,               # loop ĐỌC được dữ liệu thật qua MCP Boss-quản-lý
     mcp_allow_patterns=_loop_mcp_allow,
+    request_approval=_loop_request_approval,   # hỏi admin qua Telegram trước khi loop cần-duyệt chạy
 ))
 
 _LOOP_LOCK = loop_feature.lock   # shim: giữ tên cũ cho code phía dưới (scheduler/automations)
@@ -4225,6 +4242,17 @@ async def _tg_callback(data, chat=None):
     chat = chat_id người bấm → nút brain chỉ đổi cho PHIÊN của họ (model vẫn đổi toàn cục)."""
     data = data or ""
     chat_key = str(chat or "default")
+    # ---- DUYỆT loop (lap:ok:<id> | lap:no:<id>) ----
+    if data.startswith("lap:"):
+        parts = data.split(":")
+        ok = len(parts) >= 2 and parts[1] == "ok"
+        aid = parts[2] if len(parts) >= 3 else ""
+        name = loop_feature.resolve_approval(aid, ok) if aid else None
+        if not name:
+            return {"text": "Yêu cầu duyệt này đã hết hạn hoặc đã được xử lý.", "alert": "Không còn hiệu lực"}
+        if ok:
+            return {"text": f"✅ Đã duyệt loop '{name}'. Sẽ chạy trong giây lát.", "alert": "Đã duyệt"}
+        return {"text": f"❌ Đã bỏ qua lần chạy loop '{name}'.", "alert": "Đã bỏ qua"}
     if data == "mx":
         return {"text": "Đã đóng bảng chọn model.", "alert": "Đã đóng"}
     # ---- nút chọn brain (bs:<idx> | bx) - tác động PHIÊN của người bấm ----

@@ -202,6 +202,20 @@ class TelegramBot:
             except Exception as e:
                 return False, f"{type(e).__name__}: {e}"
 
+    async def send_text(self, text, reply_markup=None, chat=None) -> bool:
+        """Chủ động gửi 1 tin (có thể kèm nút inline) tới chat (mặc định chủ bot = id đầu whitelist).
+        Trả True nếu gửi không lỗi. Dùng cho yêu cầu DUYỆT loop qua Telegram."""
+        chat = chat or (self.chat_ids[0] if self.chat_ids else "")
+        if not chat:
+            return False
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(20.0)) as client:
+                await self._send(client, chat, text, reply_markup=reply_markup)
+            return True
+        except Exception as e:
+            print(f"[telegram send_text] {e}", file=sys.stderr)
+            return False
+
     async def _typing(self, client, chat):
         try:
             await client.post(self._url("sendChatAction"), json={"chat_id": chat, "action": "typing"})
