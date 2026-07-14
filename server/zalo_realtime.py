@@ -161,6 +161,87 @@ class ZaloRealtime:
             return
         await asyncio.to_thread(self._send_sync, thread_id, text)
 
+    # ---------- HÀNH ĐỘNG THẬT trên Zalo (poll / @All / reminder / list nhóm) ----------
+    # Gọi thẳng subcommand của zalo-agent-cli (MCP chỉ có send/get, nên phải dùng CLI).
+    def _run_cli_sync(self, args: list) -> tuple:
+        """Chạy 1 lệnh zalo-agent-cli (kèm --json). Trả (ok, data, err).
+        data = JSON đã parse nếu được, không thì text thô."""
+        home = self.home or self._zalo_home()
+        if not home:
+            return False, None, "Chưa có tài khoản Zalo kết nối (quét QR ở trang Kết nối)"
+        env = dict(os.environ)
+        env["HOME"] = home
+        env["USERPROFILE"] = home
+        try:
+            p = subprocess.run(
+                ["npx", "-y", "zalo-agent-cli", *[str(a) for a in args], "--json"],
+                env=env, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=90, check=False,
+            )
+        except Exception as e:
+            return False, None, f"{type(e).__name__}: {e}"
+        out = (p.stdout or "").strip()
+        data = out
+        if out:
+            try:
+                data = json.loads(out)
+            except Exception:
+                data = out
+        if p.returncode != 0:
+            return False, data, ((p.stderr or out or f"exit {p.returncode}")[:500])
+        return True, data, ""
+
+    async def _run_cli(self, args: list) -> dict:
+        ok, data, err = await asyncio.to_thread(self._run_cli_sync, args)
+        return {"ok": ok, "data": data, "error": err}
+
+    async def create_poll(self, group_id: str, question: str, options: list, *,
+                          multi: bool = False, anonymous: bool = False,
+                          hide_preview: bool = False, expire_min: int = 0) -> dict:
+        """Tạo POLL thật trong nhóm: poll create <groupId> <question> <opt...>."""
+        opts = [str(o).strip() for o in (options or []) if str(o).strip()]
+        if not group_id or not question or len(opts) < 2:
+            return {"ok": False, "error": "Cần group_id, question và tối thiểu 2 lựa chọn"}
+        args = ["poll", "create", group_id, question, *opts]
+        if multi:
+            args.append("--multi")
+        if anonymous:
+            args.append("--anonymous")
+        if hide_preview:
+            args.append("--hide-preview")
+        if expire_min and int(expire_min) > 0:
+            args += ["--expire", str(int(expire_min))]
+        return await self._run_cli(args)
+
+    async def send_mention_all(self, group_id: str, text: str) -> dict:
+        """Gửi tin có tag @All THẬT: đặt '@All' đầu tin, mention pos=0 uid=-1 len=4 (-1 = tất cả)."""
+        text = (text or "").strip()
+        if not group_id or not text:
+            return {"ok": False, "error": "Cần group_id và text"}
+        tag = "@All"
+        full = f"{tag} {text}"
+        args = ["msg", "send", group_id, full, "-t", "1", "--mention", f"0:-1:{len(tag)}"]
+        return await self._run_cli(args)
+
+    async def create_reminder(self, thread_id: str, title: str, *, when: str = "",
+                              group: bool = True, repeat: str = "none", emoji: str = "⏰") -> dict:
+        """Tạo NHẮC HẸN thật: reminder create <threadId> <title> [--time "YYYY-MM-DD HH:mm"] [-t 0|1] [--repeat]."""
+        title = (title or "").strip()
+        if not thread_id or not title:
+            return {"ok": False, "error": "Cần thread_id và title"}
+        args = ["reminder", "create", thread_id, title, "-t", "1" if group else "0"]
+        if when and when.strip():
+            args += ["--time", when.strip()]
+        if repeat and repeat != "none":
+            args += ["--repeat", repeat]
+        if emoji:
+            args += ["--emoji", emoji]
+        return await self._run_cli(args)
+
+    async def list_groups(self) -> dict:
+        """Liệt kê nhóm Zalo (tên + id) để biết group_id: group list."""
+        return await self._run_cli(["group", "list"])
+
     # ---------- sinh câu trả lời bằng Claude (chỉ đọc) ----------
     async def _generate(self, question: str, history: str = "") -> str:
         # KB khách-an-toàn (tuỳ chọn) - 1 file FAQ do Sếp biên tập, KHÔNG phải brain nội bộ.
