@@ -117,26 +117,41 @@ class ZaloRealtime:
         self._history: dict[str, deque] = {}
 
     # ---------- tìm tài khoản Zalo đã kết nối ----------
-    def _zalo_home(self) -> Optional[str]:
-        """HOME cô lập chứa credential Zalo (đã quét QR).
+    def _zalo_home(self, account: str = "") -> Optional[str]:
+        """HOME cô lập chứa credential Zalo (đã quét QR) của MỘT tài khoản.
 
-        QUAN TRỌNG: Zalo chỉ cho 1 phiên WebSocket/tài khoản. Listener realtime này PHẢI là
-        phiên DUY NHẤT → nên KHÔNG đòi connection 'enabled' (user tắt Zalo MCP để nó thôi mở
-        listener cạnh tranh, nhưng credential/home vẫn còn). Ưu tiên env ZALO_HOME nếu đặt tay."""
+        account rỗng = tài khoản mặc định (ZALO_HOME nếu đặt tay, không thì nick đầu danh sách) -
+        dùng cho listener realtime (Zalo chỉ cho 1 phiên WebSocket/tài khoản).
+        account có giá trị = CHỌN đúng nick theo id / slug / tên gợi nhớ (label) - dùng cho
+        hành động poll/@All/nhắc hẹn để không bị ép chạy bằng nick đầu tiên.
+        KHÔNG đòi connection 'enabled' (credential/home vẫn còn khi user tắt Zalo MCP)."""
         env_home = os.getenv("ZALO_HOME", "").strip()
-        if env_home:
+        if env_home and not account:
             return env_home
         try:
-            for c in mcp_store.list_connections():
-                if c.get("connector_id") != "zalo":
-                    continue
-                home = (c.get("config") or {}).get("home_dir")
-                if home:
-                    return home
-                return str(self.deps.state_dir / "connector-home" / f"{c['connector_id']}-{c.get('slug')}")
+            accts = mcp_store.zalo_accounts()
+            if not accts:
+                return None
+            if not account:
+                return accts[0]["home"]
+            a = account.strip().lower()
+            hit = (next((x for x in accts if a in (str(x.get("id") or "").lower(),
+                                                   str(x.get("slug") or "").lower(),
+                                                   str(x.get("label") or "").lower())), None)
+                   or next((x for x in accts if a in str(x.get("label") or "").lower()), None))
+            return hit["home"] if hit else None
         except Exception as e:
             _log(f"zalo_home error: {e}")
-        return None
+            return None
+
+    def list_accounts(self) -> dict:
+        """Trả danh sách tài khoản Zalo (id/tên/slug) để biết truyền 'account' nào cho hành động."""
+        try:
+            accts = mcp_store.zalo_accounts()
+            return {"ok": True, "accounts": [{"id": x.get("id"), "name": x.get("label"),
+                                              "slug": x.get("slug")} for x in accts]}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     def _zalo_env(self) -> dict:
         env = dict(os.environ)
@@ -163,11 +178,13 @@ class ZaloRealtime:
 
     # ---------- HÀNH ĐỘNG THẬT trên Zalo (poll / @All / reminder / list nhóm) ----------
     # Gọi thẳng subcommand của zalo-agent-cli (MCP chỉ có send/get, nên phải dùng CLI).
-    def _run_cli_sync(self, args: list) -> tuple:
-        """Chạy 1 lệnh zalo-agent-cli (kèm --json). Trả (ok, data, err).
-        data = JSON đã parse nếu được, không thì text thô."""
-        home = self.home or self._zalo_home()
+    def _run_cli_sync(self, args: list, account: str = "") -> tuple:
+        """Chạy 1 lệnh zalo-agent-cli (kèm --json) bằng credential của MỘT nick. Trả (ok, data, err).
+        account rỗng = nick mặc định; có giá trị = chọn nick theo id/slug/tên."""
+        home = self._zalo_home(account) if account else (self.home or self._zalo_home())
         if not home:
+            if account:
+                return False, None, f"Không tìm thấy tài khoản Zalo '{account}' (xem /zalo/accounts)"
             return False, None, "Chưa có tài khoản Zalo kết nối (quét QR ở trang Kết nối)"
         env = dict(os.environ)
         env["HOME"] = home
@@ -191,13 +208,13 @@ class ZaloRealtime:
             return False, data, ((p.stderr or out or f"exit {p.returncode}")[:500])
         return True, data, ""
 
-    async def _run_cli(self, args: list) -> dict:
-        ok, data, err = await asyncio.to_thread(self._run_cli_sync, args)
+    async def _run_cli(self, args: list, account: str = "") -> dict:
+        ok, data, err = await asyncio.to_thread(self._run_cli_sync, args, account)
         return {"ok": ok, "data": data, "error": err}
 
     async def create_poll(self, group_id: str, question: str, options: list, *,
                           multi: bool = False, anonymous: bool = False,
-                          hide_preview: bool = False, expire_min: int = 0) -> dict:
+                          hide_preview: bool = False, expire_min: int = 0, account: str = "") -> dict:
         """Tạo POLL thật trong nhóm: poll create <groupId> <question> <opt...>."""
         opts = [str(o).strip() for o in (options or []) if str(o).strip()]
         if not group_id or not question or len(opts) < 2:
@@ -211,9 +228,9 @@ class ZaloRealtime:
             args.append("--hide-preview")
         if expire_min and int(expire_min) > 0:
             args += ["--expire", str(int(expire_min))]
-        return await self._run_cli(args)
+        return await self._run_cli(args, account)
 
-    async def send_mention_all(self, group_id: str, text: str) -> dict:
+    async def send_mention_all(self, group_id: str, text: str, *, account: str = "") -> dict:
         """Gửi tin có tag @All THẬT: đặt '@All' đầu tin, mention pos=0 uid=-1 len=4 (-1 = tất cả)."""
         text = (text or "").strip()
         if not group_id or not text:
@@ -221,10 +238,11 @@ class ZaloRealtime:
         tag = "@All"
         full = f"{tag} {text}"
         args = ["msg", "send", group_id, full, "-t", "1", "--mention", f"0:-1:{len(tag)}"]
-        return await self._run_cli(args)
+        return await self._run_cli(args, account)
 
     async def create_reminder(self, thread_id: str, title: str, *, when: str = "",
-                              group: bool = True, repeat: str = "none", emoji: str = "⏰") -> dict:
+                              group: bool = True, repeat: str = "none", emoji: str = "⏰",
+                              account: str = "") -> dict:
         """Tạo NHẮC HẸN thật: reminder create <threadId> <title> [--time "YYYY-MM-DD HH:mm"] [-t 0|1] [--repeat]."""
         title = (title or "").strip()
         if not thread_id or not title:
@@ -236,11 +254,11 @@ class ZaloRealtime:
             args += ["--repeat", repeat]
         if emoji:
             args += ["--emoji", emoji]
-        return await self._run_cli(args)
+        return await self._run_cli(args, account)
 
-    async def list_groups(self) -> dict:
-        """Liệt kê nhóm Zalo (tên + id) để biết group_id: group list."""
-        return await self._run_cli(["group", "list"])
+    async def list_groups(self, account: str = "") -> dict:
+        """Liệt kê nhóm Zalo (tên + id) của 1 nick để biết group_id: group list."""
+        return await self._run_cli(["group", "list"], account)
 
     # ---------- sinh câu trả lời bằng Claude (chỉ đọc) ----------
     async def _generate(self, question: str, history: str = "") -> str:

@@ -55,7 +55,7 @@ _AUTH_PUBLIC_EXACT = ("/", "/favicon.ico", "/auth/status", "/auth/login", "/auth
                       "/hub/mcp", "/connect/oauth/callback")
 # Endpoint CHỈ-LOCALHOST: agent (Claude CLI chạy cùng máy/container) curl được mà không cần
 # cookie đăng nhập; request từ ngoài (qua Traefik/Caddy/LAN) đến từ IP khác loopback → vẫn bị chặn.
-_AUTH_LOCAL_EXACT = ("/telegram/send-file", "/hooks/zalo",
+_AUTH_LOCAL_EXACT = ("/telegram/send-file", "/hooks/zalo", "/zalo/accounts",
                      "/zalo/groups", "/zalo/poll", "/zalo/mention", "/zalo/reminder")
 
 
@@ -183,7 +183,10 @@ def build_system_prompt(brain: str = "brain") -> str:
         "Khi CHỦ yêu cầu tạo bình chọn (vote/poll), tag @All, hay tạo nhắc hẹn trong 1 NHÓM ZALO, "
         "ĐỪNG gõ text mô phỏng (kiểu '1. Có / 2. Không'). Hãy tạo THẬT bằng cách gọi HTTP nội bộ "
         f"(dùng tool Bash + curl tới http://127.0.0.1:{_zp}). Tài khoản Zalo phải đã kết nối (quét QR).\n"
-        "1) Lấy group_id: `curl -s http://127.0.0.1:" + str(_zp) + "/zalo/groups` (tìm nhóm theo tên).\n"
+        "0) NHIỀU NICK ZALO: nếu chủ nói rõ nick nào (vd 'gửi bằng nick Minh Tuấn') hoặc có nhiều tài khoản, "
+        "xem `curl -s http://127.0.0.1:" + str(_zp) + "/zalo/accounts` rồi thêm \"account\":\"<tên nick>\" vào body "
+        "(bỏ trống = nick mặc định). Nhóm nào phải dùng đúng nick đang ở trong nhóm đó.\n"
+        "1) Lấy group_id: `curl -s 'http://127.0.0.1:" + str(_zp) + "/zalo/groups?account=<tên nick>'` (tìm nhóm theo tên).\n"
         "2) Tạo poll: `curl -s -X POST http://127.0.0.1:" + str(_zp) + "/zalo/poll -H 'Content-Type: application/json' "
         "-d '{\"group_id\":\"<id>\",\"question\":\"<câu hỏi>\",\"options\":[\"Có\",\"Không\"]}'` "
         "(thêm \"multi\":true, \"anonymous\":true, \"expire_min\":N nếu cần).\n"
@@ -2736,44 +2739,51 @@ zalo_rt_feature = zalo_rt_mod.register(app, zalo_rt_mod.ZaloRTDeps(
 # ---- Hành động THẬT trên Zalo (poll / @All / reminder / list nhóm) ----
 # Dùng được từ: dashboard (có cookie), engine chat/Telegram (curl localhost - xem _AUTH_LOCAL_EXACT),
 # và lệnh Telegram /vote /tagall /nhac /nhomzalo. zalo-agent-cli phải đã đăng nhập (quét QR).
+@app.get("/zalo/accounts")
+async def zalo_accounts_ep():
+    """Danh sách tài khoản Zalo đã kết nối (id/tên/slug) - để biết truyền 'account' nào."""
+    return zalo_rt_feature.list_accounts()
+
+
 @app.get("/zalo/groups")
-async def zalo_groups():
-    """Liệt kê nhóm Zalo (tên + id) để lấy group_id."""
-    return await zalo_rt_feature.list_groups()
+async def zalo_groups(account: str = Query("")):
+    """Liệt kê nhóm Zalo (tên + id) để lấy group_id. ?account=<tên/slug/id> để chọn nick."""
+    return await zalo_rt_feature.list_groups(account=account)
 
 
 @app.post("/zalo/poll")
 async def zalo_poll(body: dict = Body(...)):
-    """Tạo poll thật. body: {group_id, question, options[], multi?, anonymous?, hide_preview?, expire_min?}"""
+    """Tạo poll thật. body: {group_id, question, options[], account?, multi?, anonymous?, hide_preview?, expire_min?}"""
     gid = str(body.get("group_id") or "").strip()
     q = str(body.get("question") or "").strip()
     opts = [str(o).strip() for o in (body.get("options") or []) if str(o).strip()]
     if not (gid and q and len(opts) >= 2):
         return JSONResponse({"ok": False, "error": "Cần group_id, question và tối thiểu 2 options"}, status_code=400)
     return await zalo_rt_feature.create_poll(
-        gid, q, opts, multi=bool(body.get("multi")), anonymous=bool(body.get("anonymous")),
+        gid, q, opts, account=str(body.get("account") or "").strip(),
+        multi=bool(body.get("multi")), anonymous=bool(body.get("anonymous")),
         hide_preview=bool(body.get("hide_preview")), expire_min=int(body.get("expire_min") or 0))
 
 
 @app.post("/zalo/mention")
 async def zalo_mention(body: dict = Body(...)):
-    """Gửi tin có tag @All thật. body: {group_id, text}"""
+    """Gửi tin có tag @All thật. body: {group_id, text, account?}"""
     gid = str(body.get("group_id") or "").strip()
     text = str(body.get("text") or "").strip()
     if not (gid and text):
         return JSONResponse({"ok": False, "error": "Cần group_id và text"}, status_code=400)
-    return await zalo_rt_feature.send_mention_all(gid, text)
+    return await zalo_rt_feature.send_mention_all(gid, text, account=str(body.get("account") or "").strip())
 
 
 @app.post("/zalo/reminder")
 async def zalo_reminder(body: dict = Body(...)):
-    """Tạo nhắc hẹn thật. body: {thread_id, title, time?('YYYY-MM-DD HH:mm'), group?, repeat?, emoji?}"""
+    """Tạo nhắc hẹn thật. body: {thread_id, title, time?('YYYY-MM-DD HH:mm'), account?, group?, repeat?, emoji?}"""
     tid = str(body.get("thread_id") or "").strip()
     title = str(body.get("title") or "").strip()
     if not (tid and title):
         return JSONResponse({"ok": False, "error": "Cần thread_id và title"}, status_code=400)
     return await zalo_rt_feature.create_reminder(
-        tid, title, when=str(body.get("time") or "").strip(),
+        tid, title, when=str(body.get("time") or "").strip(), account=str(body.get("account") or "").strip(),
         group=bool(body.get("group", True)), repeat=str(body.get("repeat") or "none"),
         emoji=str(body.get("emoji") or "⏰"))
 
@@ -4479,9 +4489,22 @@ async def _tg_command(cmd, arg, chat=None):
                              "(hội thoại reset để nạp đúng bộ nhớ/skill của brain mới)"}
         # Không tham số → menu nút bấm chọn brain
         return {"reply": _tg_brain_header(chat_key), "reply_markup": _tg_brain_kb(brains, chat_key)}
-    # ---- Hành động Zalo thật (poll / @All / reminder / list nhóm) ----
+    # ---- Hành động Zalo thật (poll / @All / reminder / list nhóm / list tài khoản) ----
+    # Nhiều nick Zalo: thêm 'acc:<tên nick>' ở CUỐI lệnh để chọn tài khoản (bỏ trống = nick mặc định).
+    def _pop_acc(ps):
+        if ps and ps[-1].lower().startswith("acc:"):
+            return ps[:-1], ps[-1][4:].strip()
+        return ps, ""
+    if cmd in ("taikhoanzalo", "zaloaccounts", "nickzalo"):
+        r = zalo_rt_feature.list_accounts()
+        accs = r.get("accounts") or []
+        if not accs:
+            return {"reply": "Chưa có tài khoản Zalo nào kết nối (quét QR ở trang Kết nối)."}
+        lines = [f"• {a.get('name') or '(không tên)'} — slug: {a.get('slug')}" for a in accs]
+        return {"reply": "👤 Tài khoản Zalo (dùng acc:<tên> để chọn nick):\n" + "\n".join(lines)}
     if cmd in ("nhomzalo", "zalogroups", "nhom"):
-        r = await zalo_rt_feature.list_groups()
+        acc = arg.strip()[4:].strip() if arg.strip().lower().startswith("acc:") else arg.strip()
+        r = await zalo_rt_feature.list_groups(account=acc)
         if not r.get("ok"):
             return {"reply": f"⚠ Không lấy được danh sách nhóm Zalo: {r.get('error')}"}
         data = r.get("data")
@@ -4494,27 +4517,27 @@ async def _tg_command(cmd, arg, chat=None):
                 lines.append(f"• {g.get('name') or g.get('groupName') or '(không tên)'} — id: {g.get('groupId') or g.get('id')}")
         return {"reply": "🔗 Nhóm Zalo (dùng id cho /vote /tagall /nhac):\n" + "\n".join(lines)}
     if cmd in ("vote", "poll"):
-        parts = [p.strip() for p in arg.split("|")]
+        parts, acc = _pop_acc([p.strip() for p in arg.split("|")])
         if len(parts) < 4:
-            return {"reply": "Cú pháp: /vote <groupId> | <câu hỏi> | <đáp án 1> | <đáp án 2> [| ...]\n(lấy groupId bằng /nhomzalo)"}
+            return {"reply": "Cú pháp: /vote <groupId> | <câu hỏi> | <đáp án 1> | <đáp án 2> [| ...] [| acc:<nick>]\n(lấy groupId bằng /nhomzalo)"}
         gid, question, options = parts[0], parts[1], parts[2:]
-        r = await zalo_rt_feature.create_poll(gid, question, options)
+        r = await zalo_rt_feature.create_poll(gid, question, options, account=acc)
         return {"reply": (f"✅ Đã tạo vote trong nhóm.\nCâu hỏi: {question}\nLựa chọn: {', '.join(options)}"
                           if r.get("ok") else f"⚠ Tạo vote lỗi: {r.get('error')}")}
     if cmd in ("tagall", "all"):
-        parts = [p.strip() for p in arg.split("|")]
+        parts, acc = _pop_acc([p.strip() for p in arg.split("|")])
         if len(parts) < 2 or not parts[0] or not parts[1]:
-            return {"reply": "Cú pháp: /tagall <groupId> | <nội dung>\n(lấy groupId bằng /nhomzalo)"}
-        r = await zalo_rt_feature.send_mention_all(parts[0], parts[1])
+            return {"reply": "Cú pháp: /tagall <groupId> | <nội dung> [| acc:<nick>]\n(lấy groupId bằng /nhomzalo)"}
+        r = await zalo_rt_feature.send_mention_all(parts[0], parts[1], account=acc)
         return {"reply": ("✅ Đã gửi tin tag @All vào nhóm."
                           if r.get("ok") else f"⚠ Tag @All lỗi: {r.get('error')}")}
     if cmd in ("nhac", "remind", "reminder"):
-        parts = [p.strip() for p in arg.split("|")]
+        parts, acc = _pop_acc([p.strip() for p in arg.split("|")])
         if len(parts) < 3:
-            return {"reply": "Cú pháp: /nhac <threadId> | <YYYY-MM-DD HH:mm> | <nội dung> [| daily|weekly|monthly]\n(lấy id bằng /nhomzalo)"}
+            return {"reply": "Cú pháp: /nhac <threadId> | <YYYY-MM-DD HH:mm> | <nội dung> [| daily|weekly|monthly] [| acc:<nick>]\n(lấy id bằng /nhomzalo)"}
         tid, when, title = parts[0], parts[1], parts[2]
         repeat = parts[3] if len(parts) >= 4 and parts[3] else "none"
-        r = await zalo_rt_feature.create_reminder(tid, title, when=when, group=True, repeat=repeat)
+        r = await zalo_rt_feature.create_reminder(tid, title, when=when, group=True, repeat=repeat, account=acc)
         return {"reply": (f"✅ Đã tạo nhắc hẹn: {title}\nLúc: {when}" + (f" (lặp {repeat})" if repeat != "none" else "")
                           if r.get("ok") else f"⚠ Tạo nhắc hẹn lỗi: {r.get('error')}")}
     # /<slug> khác → coi là gọi skill (cần CLI)

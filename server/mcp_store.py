@@ -170,6 +170,20 @@ def get_connection(cid):
     return _public(c) if c else None
 
 
+def zalo_accounts():
+    """Danh sách tài khoản Zalo đã kết nối, kèm HOME DIR THẬT (đọc config.home_dir - nơi lưu
+    credential quét QR). Dùng cho realtime + hành động (poll/@All/reminder) để CHỌN ĐÚNG nick.
+    KHÔNG đòi 'enabled' (listener/action dùng credential kể cả khi connection đang tắt)."""
+    out = []
+    for c in _load()["connections"]:
+        if c.get("connector_id") != "zalo":
+            continue
+        home = (c.get("config") or {}).get("home_dir") or str(
+            STATE_DIR / "connector-home" / f"{c['connector_id']}-{c.get('slug')}")
+        out.append({"id": c.get("id"), "label": c.get("label"), "slug": c.get("slug"), "home": home})
+    return out
+
+
 def connection_secrets(cid):
     """Trả map secrets (fields) ĐÃ GIẢI MÃ của 1 connection - chỉ cho code nội bộ
     (vd oauth_mcp lấy client_id/client_secret BYO). TUYỆT ĐỐI không trả ra frontend."""
