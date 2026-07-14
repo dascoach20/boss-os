@@ -145,6 +145,32 @@ def _brain_memory_dir(brain: str) -> Path:
 def build_system_prompt(brain: str = "brain") -> str:
     """CLAUDE.md + nạp MEMORY.md của vault đang chọn → Boss OS luôn nhớ ngữ cảnh."""
     base = CLAUDE_MD_PATH.read_text(encoding="utf-8") if CLAUDE_MD_PATH.exists() else ""
+    # QUY TẮC ƯU TIÊN CAO - đặt NGAY ĐẦU để engine luôn tuân: hành động Zalo phải làm THẬT.
+    try:
+        _zp = str(_boss_port())
+    except Exception:
+        _zp = "7777"
+    base = (
+        "# ⚡ QUY TẮC BẮT BUỘC #1 - ZALO: BÌNH CHỌN / TAG @ALL / NHẮC HẸN PHẢI TẠO THẬT\n"
+        "Nếu chủ yêu cầu bất kỳ việc nào sau đây TRONG NHÓM ZALO thì đây là YÊU CẦU HÀNH ĐỘNG, "
+        "KHÔNG phải yêu cầu soạn văn bản:\n"
+        "- Tạo bình chọn / vote / poll / khảo sát / thăm dò (\"tạo vote\", \"lập bình chọn\", \"cho anh em chọn\"...).\n"
+        "- Tag @All / gọi cả nhóm / nhắc mọi người (\"tag all\", \"@all\", \"nhắc cả nhóm\"...).\n"
+        "- Đặt nhắc hẹn / reminder / hẹn giờ trong nhóm.\n"
+        "BẮT BUỘC: NGAY LƯỢT TRẢ LỜI ĐẦU TIÊN, gọi HTTP nội bộ bằng tool Bash + curl để tạo THẬT. "
+        "TUYỆT ĐỐI KHÔNG trả lời bằng văn bản mô phỏng (gõ '1. Có / 2. Không', '@All ...') và "
+        "TUYỆT ĐỐI KHÔNG dùng tool Zalo send_message để gõ danh sách lựa chọn - đó là LÀM SAI. "
+        "Nếu thiếu group_id thì tự gọi bước (1) để tra, thiếu thông tin thì hỏi NGẮN 1 câu rồi làm ngay.\n"
+        f"Các lệnh (server nội bộ http://127.0.0.1:{_zp}):\n"
+        f"(1) Danh sách nhóm để lấy group_id: `curl -s http://127.0.0.1:{_zp}/zalo/groups` (nhiều nick: thêm `?account=<tên nick>`; xem nick: `/zalo/accounts`).\n"
+        f"(2) Bình chọn: `curl -s -X POST http://127.0.0.1:{_zp}/zalo/poll -H 'Content-Type: application/json' -d '{{\"group_id\":\"<id>\",\"question\":\"<câu hỏi>\",\"options\":[\"Có\",\"Không\"]}}'` (tuỳ chọn thêm \"multi\":true, \"anonymous\":true, \"expire_min\":N, \"account\":\"<nick>\").\n"
+        f"(3) Tag @All: `curl -s -X POST http://127.0.0.1:{_zp}/zalo/mention -d '{{\"group_id\":\"<id>\",\"text\":\"<nội dung>\"}}'`.\n"
+        f"(4) Nhắc hẹn: `curl -s -X POST http://127.0.0.1:{_zp}/zalo/reminder -d '{{\"thread_id\":\"<id>\",\"title\":\"<nội dung>\",\"time\":\"YYYY-MM-DD HH:mm\",\"repeat\":\"none|daily|weekly|monthly\"}}'`.\n"
+        "Sau khi gọi: nếu ok=true thì báo ngắn \"đã tạo\"; nếu ok=false thì nói lỗi cho chủ (thường do chưa kết nối Zalo / sai group_id). "
+        "Ví dụ: chủ nói \"tạo vote nhóm DAS Home: đi họp chiều nay? Có/Không\" → curl /zalo/groups tìm id nhóm DAS Home → curl /zalo/poll với question+options → báo \"đã tạo bình chọn\". "
+        "Xác nhận đúng nhóm trước khi tag @All để không làm phiền nhầm nhóm.\n\n"
+        "----\n\n"
+    ) + base
     idx = _brain_memory_dir(brain) / "MEMORY.md"
     mem = ""
     try:
@@ -173,29 +199,6 @@ def build_system_prompt(brain: str = "brain") -> str:
         base += _boss_capability_summary(brain)   # chỉ mục năng lực LIVE (mọi engine biết Boss OS có gì)
     except Exception:
         pass
-    # Năng lực HÀNH ĐỘNG THẬT trên Zalo (poll/@All/reminder) - engine gọi qua HTTP nội bộ.
-    try:
-        _zp = _boss_port()
-    except Exception:
-        _zp = "7777"
-    base += (
-        "\n\n# === HÀNH ĐỘNG THẬT TRÊN ZALO (poll / tag @All / nhắc hẹn) ===\n"
-        "Khi CHỦ yêu cầu tạo bình chọn (vote/poll), tag @All, hay tạo nhắc hẹn trong 1 NHÓM ZALO, "
-        "ĐỪNG gõ text mô phỏng (kiểu '1. Có / 2. Không'). Hãy tạo THẬT bằng cách gọi HTTP nội bộ "
-        f"(dùng tool Bash + curl tới http://127.0.0.1:{_zp}). Tài khoản Zalo phải đã kết nối (quét QR).\n"
-        "0) NHIỀU NICK ZALO: nếu chủ nói rõ nick nào (vd 'gửi bằng nick Minh Tuấn') hoặc có nhiều tài khoản, "
-        "xem `curl -s http://127.0.0.1:" + str(_zp) + "/zalo/accounts` rồi thêm \"account\":\"<tên nick>\" vào body "
-        "(bỏ trống = nick mặc định). Nhóm nào phải dùng đúng nick đang ở trong nhóm đó.\n"
-        "1) Lấy group_id: `curl -s 'http://127.0.0.1:" + str(_zp) + "/zalo/groups?account=<tên nick>'` (tìm nhóm theo tên).\n"
-        "2) Tạo poll: `curl -s -X POST http://127.0.0.1:" + str(_zp) + "/zalo/poll -H 'Content-Type: application/json' "
-        "-d '{\"group_id\":\"<id>\",\"question\":\"<câu hỏi>\",\"options\":[\"Có\",\"Không\"]}'` "
-        "(thêm \"multi\":true, \"anonymous\":true, \"expire_min\":N nếu cần).\n"
-        "3) Tag @All: `curl -s -X POST .../zalo/mention -d '{\"group_id\":\"<id>\",\"text\":\"<nội dung>\"}'`.\n"
-        "4) Nhắc hẹn: `curl -s -X POST .../zalo/reminder -d '{\"thread_id\":\"<id>\",\"title\":\"<nội dung>\","
-        "\"time\":\"YYYY-MM-DD HH:mm\",\"repeat\":\"none|daily|weekly|monthly\"}'`.\n"
-        "Nếu kết quả trả về ok=false thì báo lỗi lại cho chủ (thường do chưa kết nối Zalo hoặc sai group_id). "
-        "CHỈ làm khi chủ yêu cầu rõ; xác nhận đúng nhóm trước khi tag @All để tránh làm phiền cả nhóm."
-    )
     # Luật văn phong BẮT BUỘC: không bao giờ dùng gạch ngang dài trong câu trả lời.
     base += (
         "\n\n# === LUẬT VĂN PHONG (BẮT BUỘC) ===\n"

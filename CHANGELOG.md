@@ -4,6 +4,10 @@ Lịch sử phiên bản Boss OS. Bản mới nhất ở trên cùng. Xem ngay t
 
 Định dạng: mỗi phiên bản là một khối `## [x.y.z] - ngày`, bên dưới nhóm thay đổi theo `### Thêm mới / Sửa lỗi / Cải thiện / Bảo mật`.
 
+## [1.0.16] - 2026-07-14
+### Sửa lỗi
+- **Zalo: ra lệnh tạo vote/@All/nhắc hẹn nhưng bot cứ gửi TEXT thường, phải nhắc nhiều lần mới tạo thật**: chỉ dẫn cách tạo thật trước đây bị chôn ở cuối system prompt và chưa dứt khoát nên engine mặc định gõ text (kiểu "1. Có / 2. Không") qua send_message. Nay đưa thành QUY TẮC BẮT BUỘC #1 ở ĐẦU system prompt: nhận diện đây là yêu cầu HÀNH ĐỘNG, phải gọi endpoint tạo poll/@All/nhắc hẹn THẬT ngay lượt đầu, cấm gõ text mô phỏng và cấm dùng send_message để liệt kê lựa chọn. Kèm từ khoá kích hoạt + ví dụ.
+
 ## [1.0.15] - 2026-07-14
 ### Sửa lỗi
 - **Zalo nhiều nick: hành động bị ép chạy bằng nick ĐẦU tiên**: `_zalo_home()` luôn lấy tài khoản Zalo đầu danh sách, không chọn được nick, nên mọi lệnh poll/@All/nhắc hẹn/liệt kê nhóm đều chạy sai nick (vd luôn là "Minh Tuấn"). Nay đọc đúng home thật của từng nick (từ config.home_dir) và cho CHỌN tài khoản qua field `account` (theo tên/slug/id): body endpoint thêm `"account"`, endpoint `GET /zalo/accounts` liệt kê nick, lệnh Telegram thêm `acc:<tên nick>` ở cuối. Chọn nick sai thì báo lỗi rõ, KHÔNG gửi nhầm.
