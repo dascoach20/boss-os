@@ -4,6 +4,13 @@ Lịch sử phiên bản Boss OS. Bản mới nhất ở trên cùng. Xem ngay t
 
 Định dạng: mỗi phiên bản là một khối `## [x.y.z] - ngày`, bên dưới nhóm thay đổi theo `### Thêm mới / Sửa lỗi / Cải thiện / Bảo mật`.
 
+## [1.0.14] - 2026-07-14
+### Thêm mới
+- **Zalo: tạo bình chọn (poll), tag @All, nhắc hẹn THẬT trong nhóm**: trước đây bot chỉ gửi chữ (kiểu "1. Có / 2. Không") nên không vote được. Nay gọi đúng lệnh của zalo-agent-cli để tạo poll thật (thành viên bấm vote được), tag @All thật (báo cả nhóm), và nhắc hẹn thật (có lặp ngày/tuần/tháng). Ra lệnh qua chat Boss OS/Telegram bằng lời, hoặc lệnh Telegram `/nhomzalo` `/vote` `/tagall` `/nhac`, hoặc endpoint `/zalo/poll|mention|reminder|groups`.
+- **Cửa DUYỆT loop qua Telegram**: loop `mode: full` mặc định phải hỏi admin duyệt qua Telegram (nút Duyệt/Bỏ qua) trước mỗi lần chạy tự động; quá 60 phút không phản hồi thì bỏ lần đó. Bấm Chạy ngay thủ công thì không cần duyệt. Bật/tắt riêng từng loop bằng field `require_approval`.
+### Cải thiện
+- **Cảnh báo kết nối Zalo viết lại rõ ràng**: nêu rõ được phép / không được phép làm gì và cách bật loop gửi tin có duyệt.
+
 ## [1.0.13] - 2026-07-09
 ### Cải thiện
 - **Đồng bộ thương hiệu "Boss OS" 100% ở mọi chữ hiển thị**: đổi tất cả chữ "Boss" đứng riêng (README, trang landing, docs, mô tả connector, thông báo trong app, trợ lý tự xưng, system prompt) thành "Boss OS". Giữ nguyên định danh code (biến/class như BossGraph3D, header X-Boss-Mode) và đường dẫn thư mục vault (Boss/, Boss\agents) vì đổi sẽ hỏng code/đường dẫn. Xác nhận 0 chữ "javis" còn sót trong toàn bộ source.
