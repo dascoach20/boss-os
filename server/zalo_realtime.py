@@ -42,7 +42,8 @@ def _log(msg: str) -> None:
 # (gây lặp/robot khi reply đã nhanh ~6s) - câu trả lời thật chính là sự tiếp nhận.
 REASSURE_MSG = "Anh/chị chờ em xíu nhé, em đang tổng hợp thông tin để trả lời anh/chị cho kỹ ạ 🙏"
 
-REASSURE_AFTER_S = 15.0       # sinh câu trả lời lâu hơn ngần này (giây) -> gửi tin trấn an
+REASSURE_AFTER_S = 8.0        # sinh câu trả lời lâu hơn ngần này (giây) -> gửi tin giữ nhịp ngay
+                              # (khách thấy được tiếp nhận liền, khỏi tưởng bot đứng hình)
 REPLY_MAX_WALL_S = 180.0      # trần thời gian Claude sinh 1 câu trả lời
 ESCALATE_TOKEN = "[[ESCALATE]]"
 
