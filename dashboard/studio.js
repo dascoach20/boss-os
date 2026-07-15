@@ -226,23 +226,136 @@
     render(); editor.classList.add("open");
   }
 
-  // ===== Agents =====
+  // ===== Agents (Agent Pods — kiểu Globe) =====
+  // Mỗi agent = 1 "pod" kính phát sáng. Dữ liệu sinh 100% từ GET /agents (không hardcode tên bot).
   async function loadAgents() {
     const panel = document.getElementById("panel-agents");
-    panel.innerHTML = `<div class="panel-bar"><h3>Agents</h3><button class="s-btn" id="newAgent">+ Agent</button></div><div class="cards" id="agCards">Đang tải...</div>`;
+    panel.innerHTML = `
+      <div class="pods-bar">
+        <h3><span class="pods-dot"></span> Agent Pods <span class="pods-count" id="podsCount"></span></h3>
+        <button class="s-btn" id="newAgent">+ Agent</button>
+      </div>
+      <div class="pods-grid" id="podsGrid"><div class="pods-loading">Đang tải đội agent…</div></div>`;
     document.getElementById("newAgent").onclick = () => editAgent(null);
     const d = await api(`/agents?brain=${encodeURIComponent(brain())}`);
     refreshStats();
-    const cards = document.getElementById("agCards");
-    if (!(d.agents || []).length) { cards.innerHTML = `<div class="empty">Chưa có agent. Bấm <b>+ Agent</b> để tạo (vai trò + skills + bộ nhớ riêng).</div>`; return; }
-    cards.innerHTML = "";
-    d.agents.forEach(a => {
-      const div = document.createElement("div"); div.className = "ag-card";
-      div.innerHTML = `<div class="ag-name">🤖 ${esc(a.name)} <span class="ag-model">${esc(a.model || "")}</span></div><div class="ag-role">${esc(a.role)}</div><div class="ag-skills">${(a.skills || []).map(s => `<span class="chip-skill">${esc(s)}</span>`).join("") || '<span class="dim">chưa gán skill</span>'}</div><div class="wf-actions"><button class="s-btn-ghost edit">Sửa</button><button class="s-btn-ghost del">Xoá</button></div>`;
-      div.querySelector(".edit").onclick = () => editAgent(a);
-      div.querySelector(".del").onclick = async () => { if (confirm(`Xoá agent "${a.name}"?`)) { await api("/agents/delete", { method: "POST", body: fd({ slug: a.slug, brain: brain() }) }); loadAgents(); } };
-      cards.appendChild(div);
-    });
+    const grid = document.getElementById("podsGrid");
+    const list = d.agents || [];
+    const cnt = document.getElementById("podsCount");
+    if (cnt) cnt.textContent = list.length ? `· ${list.length} agent` : "";
+    grid.innerHTML = "";
+    list.forEach(a => grid.appendChild(buildPod(a)));
+    // Pod "Tạo agent mới" luôn đứng cuối
+    const np = document.createElement("div");
+    np.className = "pod new";
+    np.innerHTML = `<div class="np-plus">+</div><div class="np-txt">${list.length ? "Tạo agent mới" : "Tạo agent đầu tiên"}</div>`;
+    np.onclick = () => editAgent(null);
+    grid.appendChild(np);
+  }
+
+  // Dựng 1 pod từ object agent thật {name, slug, role, skills, model}
+  function buildPod(a) {
+    const pod = document.createElement("div");
+    pod.className = "pod";
+    pod.dataset.slug = a.slug;
+    const ava = (a.name || "🤖").trim().charAt(0).toUpperCase() || "🤖";
+    const skills = (a.skills || []).length
+      ? (a.skills || []).map(s => `<span class="pod-skill">${esc(s)}</span>`).join("")
+      : `<span class="dim">chưa gán skill</span>`;
+    pod.innerHTML = `
+      <div class="pod-top">
+        <div class="pod-ava">${esc(ava)}</div>
+        <div class="pod-id">
+          <div class="pod-name">${esc(a.name)}</div>
+          ${a.model ? `<span class="pod-model">${esc(a.model)}</span>` : ""}
+        </div>
+        <span class="pod-status" title="Sẵn sàng"></span>
+      </div>
+      <div class="pod-role">${esc(a.role) || '<span class="dim">chưa mô tả vai trò</span>'}</div>
+      <div class="pod-skills">${skills}</div>
+      <div class="pod-acts">
+        <button class="pod-btn primary act-run">▸ Giao việc</button>
+        <button class="pod-btn act-edit">Sửa</button>
+        <button class="pod-btn icon act-del" title="Xoá agent">🗑</button>
+      </div>`;
+    pod.querySelector(".act-edit").onclick = () => editAgent(a);
+    pod.querySelector(".act-del").onclick = async () => {
+      if (confirm(`Xoá agent "${a.name}"?`)) {
+        await api("/agents/delete", { method: "POST", body: fd({ slug: a.slug, brain: brain() }) });
+        loadAgents();
+      }
+    };
+    pod.querySelector(".act-run").onclick = () => openTaskBox(pod, a);
+    return pod;
+  }
+
+  // Mở ô nhập nhiệm vụ ngay trong pod (thay hàng nút). Bấm Chạy → stream vào run-drawer.
+  function openTaskBox(pod, a) {
+    const acts = pod.querySelector(".pod-acts");
+    if (pod.querySelector(".pod-task")) return;   // đang mở rồi
+    acts.style.display = "none";
+    const box = document.createElement("div");
+    box.className = "pod-task";
+    box.innerHTML = `
+      <textarea placeholder="Giao một việc cho ${esc(a.name)}… (vd: đọc file X rồi tóm tắt)"></textarea>
+      <div class="pod-safe-note">🛡 Chế độ an toàn: chỉ đọc/ghi file trong brain. Không tạo đơn, không tiêu tiền, không đăng bài.</div>
+      <div class="pod-task-row">
+        <button class="pod-btn primary go">▸ Chạy</button>
+        <button class="pod-btn cancel">Huỷ</button>
+      </div>`;
+    acts.after(box);
+    const ta = box.querySelector("textarea");
+    ta.focus();
+    const close = () => { box.remove(); acts.style.display = ""; };
+    box.querySelector(".cancel").onclick = close;
+    box.querySelector(".go").onclick = () => {
+      const task = ta.value.trim();
+      if (!task) { ta.focus(); return; }
+      close();
+      runAgent(pod, a, task);
+    };
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) box.querySelector(".go").click(); });
+  }
+
+  // Chạy 1 agent lẻ, stream kết quả vào run-drawer (dùng lại drawer của workflow)
+  function runAgent(pod, a, task) {
+    pod.classList.add("running");
+    const st = pod.querySelector(".pod-status"); if (st) st.title = "Đang chạy…";
+    const drawer = document.getElementById("runDrawer");
+    const stepsEl = document.getElementById("runSteps");
+    document.getElementById("runTitle").textContent = `▸ ${a.name}`;
+    stepsEl.innerHTML = `<div class="run-info">Đang khởi động agent…</div>`;
+    drawer.classList.add("open");
+    const stepEl = document.createElement("div");
+    stepEl.className = "run-step";
+    stepEl.innerHTML = `<div class="rs-head"><span class="rs-agent">🤖 ${esc(a.name)}</span><span class="rs-spin"></span></div><div class="rs-task">${esc(task)}</div><div class="rs-out" id="agout"></div>`;
+    const done = () => {
+      pod.classList.remove("running");
+      if (st) st.title = "Sẵn sàng";
+      const sp = stepEl.querySelector(".rs-spin"); if (sp) sp.outerHTML = `<span class="rs-ok">✓</span>`;
+    };
+    const url = `/agents/run?slug=${encodeURIComponent(a.slug)}&brain=${encodeURIComponent(brain())}&task=${encodeURIComponent(task)}`;
+    const es = new EventSource(url);
+    es.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+      if (d.type === "start") {
+        stepsEl.innerHTML = ""; stepsEl.appendChild(stepEl);
+      } else if (d.type === "text") {
+        const out = document.getElementById("agout");
+        if (out) { out.textContent += d.content; stepsEl.scrollTop = stepsEl.scrollHeight; }
+      } else if (d.type === "tool") {
+        stepEl.querySelector(".rs-head").insertAdjacentHTML("beforeend", `<span class="rs-tool">⚙ ${esc(d.tool)}</span>`);
+      } else if (d.type === "error") {
+        const out = document.getElementById("agout"); if (out) out.innerHTML += `<div class="rs-err">⚠ ${esc(d.content)}</div>`;
+      } else if (d.type === "done") {
+        es.close(); done();
+        const out = document.getElementById("agout"); if (out && !out.textContent.trim()) out.textContent = d.result || "(không có kết quả)";
+        stepsEl.insertAdjacentHTML("beforeend", `<div class="run-info done">✓ Xong</div>`);
+        stepsEl.scrollTop = stepsEl.scrollHeight;
+      }
+    };
+    es.onerror = () => { es.close(); done(); };
+    document.getElementById("runClose").onclick = () => { es.close(); done(); drawer.classList.remove("open"); };
   }
 
   async function editAgent(a) {

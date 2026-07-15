@@ -2534,6 +2534,73 @@ async def run_workflow(slug: str = Query(...), brain: str = Query("brain"), inpu
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
+
+async def run_agent_stream(brain, slug, task, safe=True):
+    """Chạy MỘT agent lẻ với một nhiệm vụ - stream SSE cho pod ở trang Agents.
+    safe=True (mặc định): chỉ thao tác file trong vault (SAFE_FILE_TOOLS), cô lập MCP,
+    chặn Bash/Web → agent KHÔNG thể tạo đơn / đốt tiền / đăng bài / gọi ra ngoài.
+    Dựng sysprompt từ chính file agent + bộ nhớ riêng (không hardcode tên/vai trò)."""
+    af = _agents_dir(brain) / f"{slug}.md"
+    if not af.exists():
+        yield {"type": "error", "content": "agent not found"}
+        return
+    ameta, abody = _read_md(af)
+    amem = _agent_memory(brain, slug)
+    aname = ameta.get("name", slug)
+    amodel = (ameta.get("model") or "").strip() or None
+    vault_root = str(_brain_root(brain))
+    sysprompt = (
+        f"Bạn là agent **{aname}**.\nVai trò: {ameta.get('role','')}\n{abody}\n\n"
+        f"Skills khả dụng: {', '.join(ameta.get('skills', []) or []) or '(không)'}. Dùng skill khi cần.\n"
+        + (f"\n# Bộ nhớ của bạn:\n{amem}\n" if amem else "")
+        + "\nLàm việc trong vault. Tập trung hoàn thành nhiệm vụ, trả kết quả rõ ràng, ngắn gọn."
+    )
+    tools = SAFE_FILE_TOOLS if safe else None
+    # Chế độ an toàn ép dùng Claude (Codex không giới hạn tool được như Claude --allowedTools) -
+    # đồng nhất với execute_workflow khi chạy nền an-toàn-file-only.
+    c = ClaudeCLI(system_prompt=sysprompt, cwd=vault_root, tag="agent-run", allowed_tools=tools)
+    c.model = ((amodel if not _is_codex_model(amodel) else "") or _aux_model() or None)
+    if tools is not None:
+        _mcpf = _empty_mcp_file()
+        if _mcpf:
+            c.mcp_config = _mcpf; c.mcp_strict = True
+        c.disallowed_tools = ["Bash", "WebFetch", "WebSearch", "Task"]
+        c.max_wall_s = 300
+    yield {"type": "start", "agent": aname, "task": task}
+    out = ""
+    async for ev in c.query(task):
+        if ev["type"] == "text":
+            yield {"type": "text", "content": ev["content"]}
+        elif ev["type"] == "tool_call":
+            yield {"type": "tool", "tool": ev.get("name", "")}
+        elif ev["type"] == "final":
+            out = ev.get("content") or out
+        elif ev["type"] == "error":
+            yield {"type": "error", "content": ev["content"]}
+    _log_agent_run(brain, slug, task, out)
+    yield {"type": "done", "result": out}
+
+
+@app.get("/agents/run")
+async def run_agent(slug: str = Query(...), brain: str = Query("brain"), task: str = Query("")):
+    """Giao một việc cho MỘT agent (user bấm nút Giao việc trên pod) - stream SSE.
+    Chế độ AN TOÀN: chỉ đọc/ghi file trong vault, không đụng MCP tiền/đơn, không ra ngoài."""
+    if not (_agents_dir(brain) / f"{slug}.md").exists():
+        return JSONResponse({"error": "agent not found"}, status_code=404)
+    if not task.strip():
+        return JSONResponse({"error": "empty task"}, status_code=400)
+
+    def sse(obj):
+        return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
+
+    async def gen():
+        async for ev in run_agent_stream(brain, slug, task):
+            yield sse(ev)
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.post("/studio/seed")
 async def studio_seed(brain: str = Form("brain")):
     """Tạo bộ Agent + Workflow mẫu để bắt đầu."""
