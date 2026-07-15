@@ -27,6 +27,10 @@ _sessions = {}        # sid -> {state, qr, label, conn_id, error, proc, home, ts
 
 _SUCCESS_EVENTS = {"login", "login_success", "success", "ready", "logged_in", "authenticated"}
 
+# Callback (do main.py gán) chạy NGAY sau khi 1 nick Zalo đăng nhập XONG - để bật lại listener
+# realtime bám nick mới nhất. None = không làm gì (giữ module độc lập, test được riêng).
+on_login_success = None
+
 
 def _sweep():
     now = time.time()
@@ -83,6 +87,12 @@ def _finish_ok(sess, obj):
         mcp_hub.invalidate_cache()
     except Exception:
         pass
+    # Vừa đăng nhập xong nick mới -> bật lại listener realtime để BÁM đúng nick đang sống này.
+    if on_login_success:
+        try:
+            on_login_success()
+        except Exception as e:
+            print(f"[zalo_login] on_login_success err: {e}", file=sys.stderr)
 
 
 def _reader(sid):

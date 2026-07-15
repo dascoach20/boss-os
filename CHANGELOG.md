@@ -4,6 +4,10 @@ Lịch sử phiên bản Boss OS. Bản mới nhất ở trên cùng. Xem ngay t
 
 Định dạng: mỗi phiên bản là một khối `## [x.y.z] - ngày`, bên dưới nhóm thay đổi theo `### Thêm mới / Sửa lỗi / Cải thiện / Bảo mật`.
 
+## [1.0.17] - 2026-07-15
+### Sửa lỗi
+- **Zalo realtime: quét QR đăng nhập lại nick trực khách xong, listener vẫn "điếc" - không nghe/không trả lời khách**: mỗi lần quét QR đẻ ra 1 home mới nối vào CUỐI danh sách; listener realtime lại lấy mù `accts[0]` (hoặc `ZALO_HOME` ghim tay) nên bám nick CŨ đã bị Zalo đá khỏi phiên (1 tài khoản chỉ 1 phiên WebSocket) -> kênh push chết, khách nhắn không ai nghe. Nay `_zalo_home()` cho listener chọn home TƯƠI nhất còn tồn tại (credential mới cập nhật gần nhất = phiên đang sống), `ZALO_HOME` chỉ còn là 1 ứng viên phải tươi nhất mới thắng nên pin cũ không bẫy được nữa. Thêm `ZaloRealtime.restart()` và callback `zalo_login.on_login_success`: quét QR 1 nick mới XONG là listener tự khởi động lại bám đúng nick đang sống, khỏi phải sửa env/redeploy tay. Hành động chỉ định nick (poll/@All/nhắc hẹn) giữ nguyên hành vi.
+
 ## [1.0.16] - 2026-07-14
 ### Sửa lỗi
 - **Zalo: ra lệnh tạo vote/@All/nhắc hẹn nhưng bot cứ gửi TEXT thường, phải nhắc nhiều lần mới tạo thật**: chỉ dẫn cách tạo thật trước đây bị chôn ở cuối system prompt và chưa dứt khoát nên engine mặc định gõ text (kiểu "1. Có / 2. Không") qua send_message. Nay đưa thành QUY TẮC BẮT BUỘC #1 ở ĐẦU system prompt: nhận diện đây là yêu cầu HÀNH ĐỘNG, phải gọi endpoint tạo poll/@All/nhắc hẹn THẬT ngay lượt đầu, cấm gõ text mô phỏng và cấm dùng send_message để liệt kê lựa chọn. Kèm từ khoá kích hoạt + ví dụ.

@@ -2806,6 +2806,19 @@ zalo_rt_feature = zalo_rt_mod.register(app, zalo_rt_mod.ZaloRTDeps(
 ))
 
 
+# Vừa quét QR đăng nhập 1 nick Zalo XONG -> tự bật lại listener realtime để BÁM nick mới nhất,
+# khỏi phải redeploy/khởi động lại tay khi khôi phục hay đổi nick trực khách. Chỉ chạy khi bật realtime.
+def _on_zalo_login_success() -> None:
+    if os.getenv("ZALO_REALTIME", "").strip() in ("1", "true", "on"):
+        try:
+            zalo_rt_feature.restart()
+        except Exception as e:
+            print(f"[zalo-rt] restart-after-login fail: {e}", file=__import__('sys').stderr)
+
+
+zalo_login.on_login_success = _on_zalo_login_success
+
+
 # ---- Hành động THẬT trên Zalo (poll / @All / reminder / list nhóm) ----
 # Dùng được từ: dashboard (có cookie), engine chat/Telegram (curl localhost - xem _AUTH_LOCAL_EXACT),
 # và lệnh Telegram /vote /tagall /nhac /nhomzalo. zalo-agent-cli phải đã đăng nhập (quét QR).

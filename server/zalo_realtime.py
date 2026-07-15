@@ -117,32 +117,68 @@ class ZaloRealtime:
         self._history: dict[str, deque] = {}
 
     # ---------- tìm tài khoản Zalo đã kết nối ----------
+    def _home_freshness(self, home: str) -> float:
+        """Độ 'tươi' của 1 home = thời điểm credential được cập nhật gần nhất (lần quét QR /
+        hoạt động Zalo mới nhất). Home vừa quét QR luôn tươi nhất -> chính là PHIÊN ĐANG SỐNG.
+        Zalo chỉ cho 1 phiên/tài khoản: quét QR lại đá phiên cũ ra, home cũ 'đứng hình' mtime."""
+        best = 0.0
+        try:
+            cred = os.path.join(home, ".zalo-agent-cli")
+            for base in (home, cred):
+                try:
+                    best = max(best, os.path.getmtime(base))
+                except OSError:
+                    pass
+            if os.path.isdir(cred):
+                for name in os.listdir(cred)[:80]:
+                    try:
+                        best = max(best, os.path.getmtime(os.path.join(cred, name)))
+                    except OSError:
+                        pass
+        except Exception:
+            pass
+        return best
+
     def _zalo_home(self, account: str = "") -> Optional[str]:
         """HOME cô lập chứa credential Zalo (đã quét QR) của MỘT tài khoản.
 
-        account rỗng = tài khoản mặc định (ZALO_HOME nếu đặt tay, không thì nick đầu danh sách) -
-        dùng cho listener realtime (Zalo chỉ cho 1 phiên WebSocket/tài khoản).
+        account rỗng = tài khoản mặc định cho listener realtime -> BÁM NICK MỚI ĐĂNG NHẬP GẦN NHẤT
+        (phiên đang sống), KHÔNG lấy mù nick đầu danh sách. Vì mỗi lần quét QR đẻ ra 1 home mới nối
+        vào CUỐI list; nick cũ (đã bị đá khỏi phiên) vẫn đứng đầu -> lấy accts[0] sẽ trỏ nhầm nick
+        chết. ZALO_HOME (nếu đặt tay) chỉ là 1 ứng viên, cũng phải TƯƠI nhất mới thắng -> pin cũ
+        không còn bẫy được listener.
         account có giá trị = CHỌN đúng nick theo id / slug / tên gợi nhớ (label) - dùng cho
         hành động poll/@All/nhắc hẹn để không bị ép chạy bằng nick đầu tiên.
         KHÔNG đòi connection 'enabled' (credential/home vẫn còn khi user tắt Zalo MCP)."""
         env_home = os.getenv("ZALO_HOME", "").strip()
-        if env_home and not account:
-            return env_home
         try:
             accts = mcp_store.zalo_accounts()
+        except Exception as e:
+            _log(f"zalo_home error: {e}")
+            accts = []
+        # --- nick chỉ định (poll/@All/nhắc hẹn) ---
+        if account:
             if not accts:
                 return None
-            if not account:
-                return accts[0]["home"]
             a = account.strip().lower()
             hit = (next((x for x in accts if a in (str(x.get("id") or "").lower(),
                                                    str(x.get("slug") or "").lower(),
                                                    str(x.get("label") or "").lower())), None)
                    or next((x for x in accts if a in str(x.get("label") or "").lower()), None))
             return hit["home"] if hit else None
-        except Exception as e:
-            _log(f"zalo_home error: {e}")
-            return None
+        # --- listener/mặc định: chọn home TƯƠI nhất còn tồn tại (phiên đang đăng nhập) ---
+        candidates = [x["home"] for x in accts if x.get("home")]
+        if env_home and env_home not in candidates:
+            candidates.append(env_home)
+        existing = [h for h in candidates if os.path.isdir(h)]
+        if existing:
+            best = max(existing, key=self._home_freshness)
+            _log(f"home mặc định (tươi nhất) = {best}")
+            return best
+        # không home nào còn trên đĩa -> fallback giữ tương thích cũ
+        if env_home:
+            return env_home
+        return accts[0]["home"] if accts else None
 
     def list_accounts(self) -> dict:
         """Trả danh sách tài khoản Zalo (id/tên/slug) để biết truyền 'account' nào cho hành động."""
@@ -446,6 +482,17 @@ class ZaloRealtime:
         self.started_at = time.time()
         _log(f"listener started pid={self.proc.pid} home={self.home}")
         return {"ok": True, "status": "running", "pid": self.proc.pid}
+
+    def restart(self) -> dict:
+        """Dừng rồi bật lại listener để BÁM lại home mới nhất. Gọi khi vừa quét QR 1 nick mới
+        (khôi phục/đổi nick trực khách) -> khỏi phải redeploy hay khởi động lại server bằng tay."""
+        try:
+            self.stop()
+        except Exception as e:
+            _log(f"restart-stop: {e}")
+        r = self.start()
+        _log(f"restart -> {r}")
+        return r
 
     def stop(self) -> dict:
         if self.proc and self.proc.poll() is None:
