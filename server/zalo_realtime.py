@@ -121,6 +121,12 @@ class ZaloRealtime:
         # đang tham gia. Trống = KHÔNG đụng nhóm nào, chỉ trả lời chat riêng.
         self.allow_groups = {g.strip() for g in
                              os.getenv("ZALO_GROUP_ALLOW", "").replace(";", ",").split(",") if g.strip()}
+        # "Người canh": tự bật lại listener khi nó chết (phiên Zalo hay tự hết hạn). _should_run = có
+        # nên đang chạy không (False khi Sếp stop tay). _alerted_down: đã báo Sếp lần rớt này chưa
+        # (khỏi spam Telegram). _watch_task: giữ ref task canh (tránh bị GC).
+        self._should_run = False
+        self._alerted_down = False
+        self._watch_task = None
 
     # ---------- tìm tài khoản Zalo đã kết nối ----------
     def _home_freshness(self, home: str) -> float:
@@ -474,6 +480,7 @@ class ZaloRealtime:
     # ---------- vòng đời listener ----------
     def start(self) -> dict:
         if self.proc and self.proc.poll() is None:
+            self._should_run = True
             return {"ok": True, "status": "running", "note": "đã chạy sẵn"}
         self.home = self._zalo_home()
         if not self.home:
@@ -500,6 +507,7 @@ class ZaloRealtime:
         self.status = "running"
         self.last_error = ""
         self.started_at = time.time()
+        self._should_run = True
         _log(f"listener started pid={self.proc.pid} home={self.home}")
         return {"ok": True, "status": "running", "pid": self.proc.pid}
 
@@ -514,6 +522,46 @@ class ZaloRealtime:
         _log(f"restart -> {r}")
         return r
 
+    async def monitor_loop(self, interval: float = 0.0) -> None:
+        """Người canh: cứ mỗi `interval` giây, nếu listener LẼ RA phải chạy mà đã chết thì tự bật lại
+        (bám phiên Zalo mới nhất). Bật lại không được (thường do phiên Zalo hết hạn, cần quét QR) ->
+        báo Sếp qua Telegram MỘT lần, không spam. Sếp stop tay thì thôi không đụng."""
+        if interval <= 0:
+            try:
+                interval = float(os.getenv("ZALO_WATCHDOG_SEC", "30") or "30")
+            except ValueError:
+                interval = 30.0
+        interval = max(10.0, interval)
+        _log(f"watchdog bật (mỗi {int(interval)}s)")
+        while True:
+            try:
+                await asyncio.sleep(interval)
+                if not self._should_run:
+                    continue                        # Sếp tắt chủ động -> không tự bật
+                if self.proc and self.proc.poll() is None:
+                    self._alerted_down = False       # đang sống -> reset cờ báo
+                    continue
+                _log("watchdog: listener đã chết, thử bật lại")
+                r = self.start()
+                if r.get("ok"):
+                    _log("watchdog: bật lại OK")
+                    self._alerted_down = False
+                elif not self._alerted_down:
+                    self._alerted_down = True
+                    try:
+                        await self.deps.notify_owner(
+                            "⚠️ Zalo trực khách bị RỚT và KHÔNG tự nối lại được"
+                            + (f" ({r.get('error','')})" if r.get('error') else "")
+                            + f". Phiên Zalo nick {self.agent_name} có thể đã hết hạn - Sếp vào app "
+                            "quét lại QR để nối lại giúp em nhé, xong là em trực khách bình thường."
+                        )
+                    except Exception as e:
+                        _log(f"watchdog notify fail: {e}")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                _log(f"watchdog loop error: {e}")
+
     def stop(self) -> dict:
         if self.proc and self.proc.poll() is None:
             try:
@@ -526,6 +574,7 @@ class ZaloRealtime:
                 _log(f"stop error: {e}")
         self.proc = None
         self.status = "off"
+        self._should_run = False
         return {"ok": True, "status": "off"}
 
     def info(self) -> dict:
@@ -578,5 +627,10 @@ def register(app, deps: ZaloRTDeps) -> ZaloRealtime:
             except Exception as e:
                 _log(f"auto-start fail: {e}")
         threading.Timer(6.0, _delayed_start).start()
+
+        # "Người canh" chạy trong event loop của app: tự bật lại listener khi rớt + báo Sếp nếu cần QR.
+        @app.on_event("startup")
+        async def _zalo_rt_watchdog_start():
+            feat._watch_task = asyncio.create_task(feat.monitor_loop())
 
     return feat

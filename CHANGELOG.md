@@ -4,6 +4,10 @@ Lịch sử phiên bản Boss OS. Bản mới nhất ở trên cùng. Xem ngay t
 
 Định dạng: mỗi phiên bản là một khối `## [x.y.z] - ngày`, bên dưới nhóm thay đổi theo `### Thêm mới / Sửa lỗi / Cải thiện / Bảo mật`.
 
+## [1.0.19] - 2026-07-15
+### Cải thiện
+- **Zalo realtime: tự hồi phục khi phiên rớt + báo Sếp khi cần quét lại QR**: phiên Zalo (zalo-agent-cli) hay tự hết hạn -> listener chết âm thầm, khách nhắn không ai nghe cho tới khi Sếp phát hiện. Thêm "người canh" (`monitor_loop`, chạy trong event loop app qua on_event startup): mỗi ~30s (env `ZALO_WATCHDOG_SEC`) nếu listener lẽ ra phải chạy mà đã chết thì TỰ bật lại (bám phiên mới nhất). Bật lại không được (phiên Zalo hết hạn, cần quét QR) -> nhắn Telegram cho Sếp MỘT lần (không spam), Sếp quét QR là listener tự nối lại. Thêm cờ `_should_run` (Sếp stop tay thì người canh không đụng).
+
 ## [1.0.18] - 2026-07-15
 ### Sửa lỗi
 - **Zalo realtime: chỉ trả lời chat riêng, BỎ HẾT tin trong nhóm (vd nhóm DAS Home)**: listener để `--filter user` (theo `zalo-agent-cli`: user = DM only) nên tin nhóm không hề về webhook; thêm nữa `_send_sync` gửi mặc định `-t 0` (chat riêng) nên có bắt được tin nhóm cũng gửi trả sai loại. Nay listener nghe `--filter all` (cả DM + nhóm), `_parse` đọc `type` để biết nhóm/DM, `_send` gửi `-t 1` cho nhóm và `-t 0` cho DM. Chống spam: chỉ TỰ trả lời nhóm có id nằm trong env `ZALO_GROUP_ALLOW` (nick đang ở hàng chục nhóm cộng đồng) - trống = chỉ trả lời chat riêng, không đụng nhóm nào.
