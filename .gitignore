@@ -78,3 +78,9 @@ server/stop-last.log
 # Branding state (logo upload) - không commit
 server/branding/
 boss-server.log
+
+# DAS Security Core - Do not push
+.das_architecture.md
+/knowledge_base/
+/prompts/
+*.env
