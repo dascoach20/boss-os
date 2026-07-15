@@ -4,6 +4,10 @@ Lịch sử phiên bản Boss OS. Bản mới nhất ở trên cùng. Xem ngay t
 
 Định dạng: mỗi phiên bản là một khối `## [x.y.z] - ngày`, bên dưới nhóm thay đổi theo `### Thêm mới / Sửa lỗi / Cải thiện / Bảo mật`.
 
+## [1.0.18] - 2026-07-15
+### Sửa lỗi
+- **Zalo realtime: chỉ trả lời chat riêng, BỎ HẾT tin trong nhóm (vd nhóm DAS Home)**: listener để `--filter user` (theo `zalo-agent-cli`: user = DM only) nên tin nhóm không hề về webhook; thêm nữa `_send_sync` gửi mặc định `-t 0` (chat riêng) nên có bắt được tin nhóm cũng gửi trả sai loại. Nay listener nghe `--filter all` (cả DM + nhóm), `_parse` đọc `type` để biết nhóm/DM, `_send` gửi `-t 1` cho nhóm và `-t 0` cho DM. Chống spam: chỉ TỰ trả lời nhóm có id nằm trong env `ZALO_GROUP_ALLOW` (nick đang ở hàng chục nhóm cộng đồng) - trống = chỉ trả lời chat riêng, không đụng nhóm nào.
+
 ## [1.0.17] - 2026-07-15
 ### Sửa lỗi
 - **Zalo realtime: quét QR đăng nhập lại nick trực khách xong, listener vẫn "điếc" - không nghe/không trả lời khách**: mỗi lần quét QR đẻ ra 1 home mới nối vào CUỐI danh sách; listener realtime lại lấy mù `accts[0]` (hoặc `ZALO_HOME` ghim tay) nên bám nick CŨ đã bị Zalo đá khỏi phiên (1 tài khoản chỉ 1 phiên WebSocket) -> kênh push chết, khách nhắn không ai nghe. Nay `_zalo_home()` cho listener chọn home TƯƠI nhất còn tồn tại (credential mới cập nhật gần nhất = phiên đang sống), `ZALO_HOME` chỉ còn là 1 ứng viên phải tươi nhất mới thắng nên pin cũ không bẫy được nữa. Thêm `ZaloRealtime.restart()` và callback `zalo_login.on_login_success`: quét QR 1 nick mới XONG là listener tự khởi động lại bám đúng nick đang sống, khỏi phải sửa env/redeploy tay. Hành động chỉ định nick (poll/@All/nhắc hẹn) giữ nguyên hành vi.

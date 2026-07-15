@@ -49,6 +49,7 @@ services:
       ZALO_AGENT_NAME: ${ZALO_AGENT_NAME:-Tuấn}            # tên "nhân viên AI" trả lời khách (1 số Zalo = 1 nhân viên)
       ZALO_AGENT_ROLE: ${ZALO_AGENT_ROLE:-nhân viên tư vấn & chăm sóc khách hàng}
       ZALO_HOME: ${ZALO_HOME:-}                            # (tuỳ chọn) trỏ thẳng HOME chứa credential Zalo, bỏ qua dò connection
+      ZALO_GROUP_ALLOW: ${ZALO_GROUP_ALLOW:-}              # id các NHÓM Zalo được phép TỰ trả lời (cách nhau dấu phẩy). Trống = chỉ trả lời chat riêng, KHÔNG đụng nhóm nào
       ZALO_KB_FILE: ${ZALO_KB_FILE:-}                      # (tuỳ chọn) file KB khách-an-toàn để trả lời chính xác (đường dẫn trong container)
       ZALO_MODEL: ${ZALO_MODEL:-sonnet}                    # model sinh câu trả lời (sonnet: nhanh + đủ thông minh)
     ports:

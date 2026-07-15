@@ -115,6 +115,11 @@ class ZaloRealtime:
         self._thread_locks: dict[str, asyncio.Lock] = {}
         # lịch sử hội thoại ngắn theo thread (để không lặp lời chào + trả lời tiếp mạch)
         self._history: dict[str, deque] = {}
+        # NHÓM được phép tự trả lời (env ZALO_GROUP_ALLOW, id cách nhau dấu phẩy). DM luôn trả lời;
+        # nhóm chỉ trả lời khi id nằm trong đây -> chặn bot nhảy vào hàng chục nhóm cộng đồng nick
+        # đang tham gia. Trống = KHÔNG đụng nhóm nào, chỉ trả lời chat riêng.
+        self.allow_groups = {g.strip() for g in
+                             os.getenv("ZALO_GROUP_ALLOW", "").replace(";", ",").split(",") if g.strip()}
 
     # ---------- tìm tài khoản Zalo đã kết nối ----------
     def _home_freshness(self, home: str) -> float:
@@ -197,20 +202,22 @@ class ZaloRealtime:
         return env
 
     # ---------- gửi tin Zalo (đồng bộ, chạy trong thread) ----------
-    def _send_sync(self, thread_id: str, text: str) -> None:
+    def _send_sync(self, thread_id: str, text: str, thread_type: int = 0) -> None:
+        # thread_type: 0 = chat riêng (User), 1 = nhóm (Group). Nhóm PHẢI có -t 1 mới vào đúng nhóm.
         try:
             subprocess.run(
-                ["npx", "-y", "zalo-agent-cli", "msg", "send", str(thread_id), text],
+                ["npx", "-y", "zalo-agent-cli", "msg", "send", str(thread_id), text,
+                 "-t", str(int(thread_type))],
                 env=self._zalo_env(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                 timeout=60, check=False,
             )
         except Exception as e:
             _log(f"send fail thread={thread_id}: {e}")
 
-    async def _send(self, thread_id: str, text: str) -> None:
+    async def _send(self, thread_id: str, text: str, thread_type: int = 0) -> None:
         if not text:
             return
-        await asyncio.to_thread(self._send_sync, thread_id, text)
+        await asyncio.to_thread(self._send_sync, thread_id, text, thread_type)
 
     # ---------- HÀNH ĐỘNG THẬT trên Zalo (poll / @All / reminder / list nhóm) ----------
     # Gọi thẳng subcommand của zalo-agent-cli (MCP chỉ có send/get, nên phải dùng CLI).
@@ -345,12 +352,13 @@ class ZaloRealtime:
             return ESCALATE_TOKEN
         return text
 
-    async def _generate_with_reassurance(self, thread_id: str, question: str, history: str = "") -> str:
+    async def _generate_with_reassurance(self, thread_id: str, question: str, history: str = "",
+                                         thread_type: int = 0) -> str:
         """Sinh câu trả lời; nếu lâu hơn REASSURE_AFTER_S thì gửi tin trấn an giữa chừng."""
         task = asyncio.create_task(self._generate(question, history))
         done, _ = await asyncio.wait({task}, timeout=REASSURE_AFTER_S)
         if task not in done:
-            await self._send(thread_id, REASSURE_MSG)
+            await self._send(thread_id, REASSURE_MSG, thread_type)
         return await task
 
     # ---------- tự học: lưu Q&A ----------
@@ -387,9 +395,15 @@ class ZaloRealtime:
             _log(f"event: {json.dumps(payload, ensure_ascii=False)[:500]}")
         except Exception:
             pass
-        thread_id, text, is_self, name, msgid = self._parse(payload)
+        thread_id, text, is_self, name, msgid, is_group = self._parse(payload)
         if not thread_id or not text or is_self:
             return
+        # NHÓM: chỉ tự trả lời nhóm nằm trong allowlist (ZALO_GROUP_ALLOW) -> tránh spam hàng chục
+        # nhóm cộng đồng nick đang tham gia. DM (chat riêng) luôn trả lời.
+        if is_group and thread_id not in self.allow_groups:
+            _log(f"bỏ qua tin nhóm ngoài allowlist: thread={thread_id}")
+            return
+        thread_type = 1 if is_group else 0
         # (a) CHỐNG TRÙNG: cùng msgId đã xử lý -> bỏ (listener/webhook đôi khi bắn lặp)
         if msgid:
             if msgid in self._seen_ids:
@@ -405,7 +419,7 @@ class ZaloRealtime:
             history_str = "\n".join(hist) if hist else ""
             # sinh câu trả lời (KHÔNG gửi ACK riêng nữa - câu trả lời ~6s chính là sự tiếp nhận;
             # chỉ gửi tin trấn an nếu > REASSURE_AFTER_S)
-            reply = await self._generate_with_reassurance(thread_id, text, history_str)
+            reply = await self._generate_with_reassurance(thread_id, text, history_str, thread_type)
             escalate = bool(reply) and ESCALATE_TOKEN in reply
             reply = (reply or "").replace(ESCALATE_TOKEN, "").strip()
             if not reply:
@@ -413,7 +427,7 @@ class ZaloRealtime:
                 reply = ("Dạ em ghi nhận rồi ạ, em nhờ chuyên gia bên em tư vấn kỹ hơn cho anh/chị. "
                          "Anh/chị cho em xin số điện thoại và giờ tiện để bên em gọi lại tư vấn cụ thể nhé ạ 🙏")
                 escalate = True
-            await self._send(thread_id, reply)
+            await self._send(thread_id, reply, thread_type)
             await self._log_qa(text, reply, thread_id, name or "")
             # cập nhật lịch sử hội thoại (giữ 6 lượt gần nhất)
             h = self._history.setdefault(thread_id, deque(maxlen=6))
@@ -434,11 +448,12 @@ class ZaloRealtime:
                 self.replied += 1
 
     def _parse(self, p: dict):
-        """Rút threadId + text + is_self + tên khách từ payload webhook của `zalo listen`.
+        """Rút threadId + text + is_self + tên khách + is_group từ payload webhook của `zalo listen`.
         Schema thật (event message): {event, threadId, type, isSelf, uidFrom, dName, content}.
-        content là string với tin text, là object với đính kèm (bỏ qua). Có fallback phòng đổi version."""
+        type: 0/'user' = chat riêng, 1/'group' = nhóm. content là string với tin text, là object với
+        đính kèm (bỏ qua). Có fallback phòng đổi version."""
         if not isinstance(p, dict):
-            return None, None, False, None, None
+            return None, None, False, None, None, False
         # message event phẳng; friend/group event lồng trong 'data' -> ưu tiên field phẳng của message
         thread = (p.get("threadId") or p.get("thread_id") or p.get("uidFrom") or p.get("fromId"))
         content = p.get("content")
@@ -448,8 +463,12 @@ class ZaloRealtime:
         is_self = bool(p.get("isSelf") or p.get("self") or p.get("fromMe"))
         name = p.get("dName") or p.get("displayName") or p.get("name")
         msgid = p.get("msgId") or p.get("cliMsgId") or p.get("msgID") or p.get("id")
+        ttype = p.get("type")
+        if ttype is None:
+            ttype = p.get("threadType") or p.get("thread_type") or p.get("isGroup")
+        is_group = str(ttype).strip().lower() in ("1", "group", "true")
         return (str(thread) if thread else None), (text.strip() if text else None), is_self, name, \
-            (str(msgid) if msgid else None)
+            (str(msgid) if msgid else None), is_group
 
     # ---------- vòng đời listener ----------
     def start(self) -> dict:
@@ -463,7 +482,7 @@ class ZaloRealtime:
         port = os.getenv("BOSS_PORT", "7777")
         args = [
             "npx", "-y", "zalo-agent-cli", "listen",
-            "--events", "message", "--filter", "user", "--no-self",
+            "--events", "message", "--filter", "all", "--no-self",
             "--webhook", f"http://127.0.0.1:{port}/hooks/zalo",
         ]
         try:
@@ -519,6 +538,7 @@ class ZaloRealtime:
             "home": self.home, "replied": self.replied,
             "escalated": self.escalated, "last_error": self.last_error,
             "sheet_webhook": bool(os.getenv("ZALO_SHEET_WEBHOOK", "").strip()),
+            "allow_groups": sorted(self.allow_groups),
         }
 
 
