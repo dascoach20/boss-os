@@ -67,3 +67,41 @@ body {
 /* thanh cuộn mảnh tông lạnh */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: rgba(140,180,235,0.22); border-radius: 3px; }
+
+/* ============================================================
+   GIAI ĐOẠN 2 — NAV RAIL → DOCK ĐÁY NGANG (nổi, kính mờ)
+   Nội dung full-width (bỏ lề trái), thoáng vùng giữa cho Globe.
+   ============================================================ */
+:root { --rail-w: 0px; }
+body.rail-collapsed { --rail-w: 0px; }
+
+.rail {
+  top: auto !important; right: auto; bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  width: auto; max-width: calc(100vw - 40px); height: auto;
+  flex-direction: row; align-items: center;
+  padding: 7px 10px; gap: 3px;
+  border-right: 0; border: 1px solid var(--glass-b);
+  border-radius: 16px;
+  box-shadow: 0 18px 46px rgba(0,0,0,0.5);
+  overflow-x: auto; overflow-y: hidden;
+}
+.rail-top, .rail-foot { display: none !important; }
+.rail-nav { flex-direction: row !important; overflow-x: auto; overflow-y: hidden; gap: 3px; padding: 0; }
+.rail-item {
+  flex: 0 0 auto !important; width: 42px; height: 42px;
+  flex-direction: column; justify-content: center; gap: 0; padding: 0; border-radius: 11px;
+}
+.rail-item .rail-lbl,
+.rail-item .rail-caret { display: none !important; }
+.rail-item.active::before {
+  left: 22% !important; right: 22% !important; top: auto !important; bottom: 3px !important;
+  width: auto !important; height: 2px !important; border-radius: 2px;
+}
+/* nội dung + trang quản lý → full-width, chừa đáy cho dock */
+body.has-rail .hud { margin-left: 0 !important; width: 100% !important; }
+.cview { left: 0 !important; bottom: 86px !important; }
+/* khi đang ở HOME (không phải trang quản lý) → ẩn hẳn cview kẻo ghost mờ phía sau */
+body:not(.in-console) .cview { display: none !important; }
+/* trang quản lý (overview...) đang bật → nổi HẲN lên trên graph + nền đặc, hết ghost */
+.cview { z-index: 50 !important; }
