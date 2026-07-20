@@ -1,482 +1,631 @@
-// ============================================
-// BOSS OS - 3D Graph (V.A.U.L.T. nebula HUD)
-// Node = sprite phát sáng additive (glow) → khối cầu tinh vân như chase.h.ai.
-// Dùng window.THREE global (load trước 3d-force-graph) + ForceGraph3D UMD.
-// ============================================
+// ============================================================
+// BOSS OS - 3D Graph (GLOBE engine)
+// Quả cầu lưới neon (lồng cầu + vành xích đạo + sao màu theo cụm + tia
+// nan hoa), dựng bằng three.js THUẦN (window.THREE r159) - KHÔNG dùng
+// ForceGraph3D. Thay cho engine "đám mây tự bung" cũ để khớp bản thiết kế
+// dasbrainnebula. Dữ liệu là THẬT: fetch /graph (nodes/edges/categories),
+// cập nhật realtime qua addOrUpdate(). Giữ NGUYÊN interface BossGraph3D
+// (load/addOrUpdate/nodeStats/setThinking/setLevel/resize/pause/wake...).
+// ============================================================
 
 const _texCache = {};
-function glowTexture(THREE, hex) {
-  if (_texCache[hex]) return _texCache[hex];
-  const s = 96;
-  const cv = document.createElement("canvas");
-  cv.width = cv.height = s;
-  const ctx = cv.getContext("2d");
-  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  g.addColorStop(0, "rgba(255,255,255,1)");      // lõi trắng nóng
-  g.addColorStop(0.18, hexA(hex, 0.95));
-  g.addColorStop(0.45, hexA(hex, 0.45));
-  g.addColorStop(1, hexA(hex, 0));               // viền tan vào nền
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, s, s);
-  const tex = new THREE.CanvasTexture(cv);
-  _texCache[hex] = tex;
-  return tex;
-}
-
-function particleGlowTexture(THREE) {
-  const key = "__particle_orange";
-  if (_texCache[key]) return _texCache[key];
+function _glowTex(THREE) {
+  if (_texCache.glow) return _texCache.glow;
   const s = 128;
   const cv = document.createElement("canvas");
   cv.width = cv.height = s;
-  const ctx = cv.getContext("2d");
-  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  g.addColorStop(0,    "rgba(255,255,255,1)");    // lõi trắng nóng - rất nhỏ
-  g.addColorStop(0.06, "rgba(255,210,120,0.95)"); // cam sáng ấm
-  g.addColorStop(0.18, "rgba(255,140,40,0.75)");  // cam đậm
-  g.addColorStop(0.40, "rgba(255,90,10,0.30)");   // cam mờ
-  g.addColorStop(0.70, "rgba(200,60,0,0.08)");    // đỏ cam tan dần
-  g.addColorStop(1,    "rgba(180,40,0,0)");       // trong suốt
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, s, s);
-  const tex = new THREE.CanvasTexture(cv);
-  _texCache[key] = tex;
-  return tex;
+  const g = cv.getContext("2d");
+  const grd = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  grd.addColorStop(0.0, "rgba(255,255,255,1)");
+  grd.addColorStop(0.14, "rgba(255,255,255,.92)");
+  grd.addColorStop(0.32, "rgba(255,255,255,.36)");
+  grd.addColorStop(0.6, "rgba(255,255,255,.08)");
+  grd.addColorStop(1.0, "rgba(255,255,255,0)");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, s, s);
+  _texCache.glow = new THREE.CanvasTexture(cv);
+  return _texCache.glow;
 }
-// Hạt sao nhỏ (điểm sáng trắng-xanh) - thay cho glow tím to → look "constellation"
-function pointTexture(THREE) {
-  const key = "__point_star";
-  if (_texCache[key]) return _texCache[key];
-  const s = 64;
-  const cv = document.createElement("canvas");
-  cv.width = cv.height = s;
-  const ctx = cv.getContext("2d");
-  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  g.addColorStop(0,    "rgba(255,255,255,1)");      // lõi trắng nóng
-  g.addColorStop(0.28, "rgba(214,230,255,0.85)");   // quầng trắng-xanh
-  g.addColorStop(0.55, "rgba(150,185,255,0.28)");
-  g.addColorStop(1,    "rgba(120,160,255,0)");      // tan vào nền
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, s, s);
-  const tex = new THREE.CanvasTexture(cv);
-  _texCache[key] = tex;
-  return tex;
-}
-// Màu điểm sáng: trắng-xanh nhạt, biến thiên nhẹ cho tự nhiên
-function pointColor() {
-  const t = Math.random();
-  const r = Math.round(188 + t * 55);
-  const g = Math.round(208 + t * 40);
-  return `rgb(${r},${g},255)`;
-}
-function hexA(hex, a) {
-  const m = hex.replace("#", "");
-  const r = parseInt(m.substring(0, 2), 16);
-  const g = parseInt(m.substring(2, 4), 16);
-  const b = parseInt(m.substring(4, 6), 16);
-  return `rgba(${r},${g},${b},${a})`;
+
+// Bảng màu RỰC RỠ theo mẫu dasbrainnebula (mỗi cụm 1 màu riêng biệt) - gán theo
+// thứ tự cụm để quả cầu nhiều màu như mẫu, thay cho màu thư mục đơn điệu của server.
+const PALETTE = [0xff7a2f, 0x4dd0e1, 0xff5c8a, 0xffc24b, 0xa78bfa, 0xe8412f, 0x8ab4ff, 0x43e0a3, 0xff9d3d, 0xd98cff];
+
+// rải đều i/n điểm trên mặt cầu bán kính radius (xoắn Fibonacci)
+function _fib(THREE, i, n, radius) {
+  const y = 1 - (i / Math.max(1, n - 1)) * 2;
+  const r = Math.sqrt(Math.max(0, 1 - y * y));
+  const th = Math.PI * (3 - Math.sqrt(5)) * i;
+  return new THREE.Vector3(Math.cos(th) * r * radius, y * radius, Math.sin(th) * r * radius);
 }
 
 class BossGraph3D {
   constructor(container, tooltip) {
     this.container = container;
     this.tooltip = tooltip;
-    this.graph = null;
     this.level = 0;
     this._smooth = 0;
     this._raf = null;
-    this._sprites = [];
-    this._thinking = false;
-    this._firingNodes = new Map();
-    this._births = new Map();   // sprite -> frames còn lại của hiệu ứng "nảy sinh"
     this._paused = false;
-    // Expose để Console (console.js) gọi pause()/wake() khi chuyển trang - không cần sửa app.js.
+    this._ready = false;
+    this._thinking = false;
+    this.nodes = [];               // [{ id,label,path,links,color, pos, sprite, base, isHub }]
+    this.nodeById = new Map();
+    this._linkCount = 0;
+    this._births = new Map();      // sprite -> frames còn lại (hiệu ứng nảy sinh)
+    this._firing = new Map();      // idx -> frames (hiệu ứng suy nghĩ)
+    this._adj = [];
+    this.R = 145;                  // bán kính lồng cầu
+    this.selected = null;
+    // Cho Console gọi pause()/wake() khi chuyển trang mà không cần sửa app.js.
     window.__bossGraph = this;
     window.dispatchEvent(new Event("boss-graph-created"));
   }
 
+  // -------------------------------------------------- NẠP DỮ LIỆU
   async load(query = "source=all") {
     const res = await fetch(`/graph?${query}`, { cache: "no-store" });
     const data = await res.json();
-    // Chuẩn hoá Unicode NFC (gộp dấu): zip macOS lưu tên NFD -> nhãn tiếng Việt vỡ font (ký tự lạ).
-    const _nfc = s => (typeof s === "string" ? s.normalize("NFC") : s);
-    (data.nodes || []).forEach(n => { n.label = _nfc(n.label); });
-    (data.categories || []).forEach(c => { c.name = _nfc(c.name); });
-    const links = data.edges.map(e => ({ source: e.source, target: e.target }));
-    const THREE = window.THREE;
-
-    if (!this.graph) {
-      if (!window.ForceGraph3D) throw new Error("Thư viện 3D chưa tải (kiểm tra mạng)");
-      if (!THREE) throw new Error("THREE chưa tải");
-
-      this.graph = ForceGraph3D()(this.container)
-        .backgroundColor("rgba(0,0,0,0)")
-        .showNavInfo(false)
-        .onEngineStop(() => { this._settled = true; })
-        .nodeThreeObject(n => {
-          const mat = new THREE.SpriteMaterial({
-            map: pointTexture(THREE),
-            color: new THREE.Color(n.__pt || (n.__pt = pointColor())),
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            transparent: true,
-          });
-          const sp = new THREE.Sprite(mat);
-          const base = 2.4 + Math.min(6, (n.links || 0) * 0.5);   // hạt nhỏ, ít phình theo link
-          sp.scale.set(base, base, 1);
-          sp.__base = base;
-          n.__sprite = sp;
-          return sp;
-        })
-        .nodeThreeObjectExtend(false)
-        .linkColor(() => "rgba(150,190,255,0.5)")
-        .linkWidth(0.5)
-        .linkOpacity(0.26)
-        .linkDirectionalParticles(0)
-        .linkDirectionalParticleWidth(4)
-        .linkDirectionalParticleColor(() => "rgba(255,165,50,0.95)")
-        .linkDirectionalParticleSpeed(0.007)
-        .onNodeHover(n => {
-          this.container.style.cursor = n ? "pointer" : "grab";
-          if (n && this.tooltip) {
-            this.tooltip.style.display = "block";
-            this.tooltip.innerHTML = `<strong>${n.label}</strong><br><span class="tt-path">${n.path}</span><br><span class="tt-links">${n.links} kết nối · click để mở</span>`;
-          } else if (this.tooltip) {
-            this.tooltip.style.display = "none";
-          }
-        })
-        .onNodeClick(n => {
-          const dist = 90;
-          const r = 1 + dist / Math.hypot(n.x || 1, n.y || 1, n.z || 1);
-          this.graph.cameraPosition({ x: (n.x || 0) * r, y: (n.y || 0) * r, z: (n.z || 0) * r }, n, 800);
-          if (window.onGraphNodeClick) window.onGraphNodeClick(n);
-        });
-
-      // Layout cầu: giãn rộng hơn để hoà vào lớp nebula
-      this.graph.d3Force("charge").strength(-70);
-      const linkForce = this.graph.d3Force("link");
-      if (linkForce) linkForce.distance(34);
-
-      const controls = this.graph.controls();
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.6;   // quay nhẹ liên tục - luôn "sống"
-
-      this._buildNebula(THREE);          // lớp hạt cầu trang trí (look giống reel)
-      this._animate();
-    }
-
-    this._settled = false;
-    this._slowFrame = 0;
-    this.graph.graphData({ nodes: data.nodes, links });
-    // Gom sprite refs + dựng adjacency (để lan truyền firing theo synapse)
-    setTimeout(() => this._rebuildRefs(), 200);
+    const nfc = s => (typeof s === "string" ? s.normalize("NFC") : s);
+    (data.nodes || []).forEach(n => { n.label = nfc(n.label); });
+    (data.categories || []).forEach(c => { c.name = nfc(c.name); });
+    if (!this._ready) this._initScene();
+    this._setData(data);
     this.resize();
     return data;
   }
 
-  // Gom lại sprite refs + adjacency từ graphData hiện tại (gọi sau mỗi lần đổi data)
-  _rebuildRefs() {
-    if (!this.graph) return;
-    const nodes = this.graph.graphData().nodes;
-    this._sprites = nodes.filter(n => n.__sprite).map(n => n.__sprite);
-    const idToIdx = {};
-    let k = 0;
-    nodes.forEach(n => { if (n.__sprite) { idToIdx[n.id] = k; k++; } });
-    this._adj = this._sprites.map(() => []);
-    this.graph.graphData().links.forEach(l => {
-      const s = typeof l.source === "object" ? l.source.id : l.source;
-      const t = typeof l.target === "object" ? l.target.id : l.target;
-      const si = idToIdx[s], ti = idToIdx[t];
-      if (si != null && ti != null) { this._adj[si].push(ti); this._adj[ti].push(si); }
-    });
-  }
-
-  nodeStats() {
-    if (!this.graph) return { nodes: 0, links: 0 };
-    const d = this.graph.graphData();
-    return { nodes: d.nodes.length, links: d.links.length };
-  }
-
-  // Thêm/cập nhật 1 node realtime (brain vừa sinh ra hoặc sửa note).
-  // linkTargets = stem (lowercase) các wikilink trong note đó.
-  addOrUpdate(node, linkTargets, isNew) {
-    if (!this.graph || !node || !node.id) return { created: false };
-    const data = this.graph.graphData();
-    const byId = new Map(data.nodes.map(n => [n.id, n]));
-    let target = byId.get(node.id);
-    let created = false;
-
-    if (!target) {
-      // Mọc ra cạnh 1 node hàng xóm đã có (nếu link tới) → trông như nảy từ mạng
-      let px = 0, py = 0, pz = 0;
-      const nb = (linkTargets || []).map(s => byId.get(s)).find(Boolean);
-      if (nb) { px = (nb.x || 0) + (Math.random() - 0.5) * 10; py = (nb.y || 0) + (Math.random() - 0.5) * 10; pz = (nb.z || 0) + (Math.random() - 0.5) * 10; }
-      target = Object.assign({}, node, { x: px, y: py, z: pz, links: 0 });
-      data.nodes.push(target);
-      byId.set(target.id, target);
-      created = true;
-    } else {
-      if (node.color) target.color = node.color;
-      if (node.path) target.path = node.path;
-    }
-
-    // Chuẩn hoá link về dạng id-string + tập key để khử trùng
-    const keyOf = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
-    const links = data.links.map(l => ({
-      source: typeof l.source === "object" ? l.source.id : l.source,
-      target: typeof l.target === "object" ? l.target.id : l.target,
-    }));
-    const seen = new Set(links.map(l => keyOf(l.source, l.target)));
-
-    (linkTargets || []).forEach(stem => {
-      const tgt = byId.get(stem);
-      if (!tgt || tgt.id === target.id) return;
-      const k = keyOf(target.id, tgt.id);
-      if (seen.has(k)) return;
-      seen.add(k);
-      links.push({ source: target.id, target: tgt.id });
-      target.links = (target.links || 0) + 1;
-      tgt.links = (tgt.links || 0) + 1;
-    });
-
-    this.graph.graphData({ nodes: data.nodes, links });
-    // Sau khi sprite của node mới dựng xong → rebuild refs + bật hiệu ứng nảy sinh
-    setTimeout(() => {
-      this._rebuildRefs();
-      if (created && target.__sprite) this._births.set(target.__sprite, 36);
-    }, 60);
-
-    return { created };
-  }
-
-  setLevel(l) { this.level = l; }
-
-  setThinking(active) {
-    this._thinking = active;
-    if (!this.graph) return;
-    if (active) {
-      this._buildThinkingSprites();
-    } else {
-      this._clearThinkingSprites();
-      this._firingNodes.clear();
-    }
-  }
-
-  _buildThinkingSprites() {
-    this._clearThinkingSprites();
+  // -------------------------------------------------- DỰNG CẢNH (1 lần)
+  _initScene() {
     const THREE = window.THREE;
-    if (!THREE || !this.graph) return;
-    const scene = this.graph.scene && this.graph.scene();
-    if (!scene) return;
-    const links = this.graph.graphData().links;
-    if (!links || !links.length) return;
-    // Lấy tối đa 60 link ngẫu nhiên để không quá nặng
-    const pool = links.length > 100 ? links.filter(() => Math.random() < 100 / links.length) : links;
-    this._thinkSprites = [];
-    pool.forEach(link => {
-      const count = 2 + (Math.random() < 0.5 ? 1 : 0);
-      for (let i = 0; i < count; i++) {
-        const mat = new THREE.SpriteMaterial({
-          map: particleGlowTexture(THREE),
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          transparent: true,
-          opacity: 0.8,
-        });
-        const sp = new THREE.Sprite(mat);
-        const size = 3.5 + Math.random() * 3;
-        sp.scale.set(size, size, 1);
-        scene.add(sp);
-        this._thinkSprites.push({ sp, link, t: Math.random(), speed: 0.007 + Math.random() * 0.008 });
+    if (!THREE) throw new Error("THREE chưa tải");
+    const W = this.container.clientWidth || window.innerWidth;
+    const H = this.container.clientHeight || window.innerHeight;
+
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.FogExp2(0x05070e, 0.0016);
+    this.camera = new THREE.PerspectiveCamera(52, W / H, 1, 4000);
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.setSize(W, H);
+    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.domElement.style.display = "block";
+    this.container.appendChild(this.renderer.domElement);
+
+    this.world = new THREE.Group();
+    this.scene.add(this.world);
+    this._glow = _glowTex(THREE);
+
+    this._buildCage(THREE);
+    this._buildRing(THREE);
+    this._buildCore(THREE);
+    this._buildPrism(THREE);
+    this._buildBgStars(THREE);
+
+    this._nodeGroup = new THREE.Group(); this.world.add(this._nodeGroup);
+    this._linkObj = null;
+
+    // trạng thái camera (quỹ đạo quanh tâm)
+    this.theta = 0.62; this.phi = 1.14; this.radius = 430;
+    this.tTheta = this.theta; this.tPhi = this.phi; this.tRadius = 430;
+    this.target = new THREE.Vector3(); this.tTarget = new THREE.Vector3();
+    this.autoSpin = true; this.dragging = false; this._moved = 0; this._px = 0; this._py = 0;
+
+    this.ray = new THREE.Raycaster();
+    this.ray.params.Sprite = { threshold: 0.1 };
+    this._bindControls();
+
+    // tự đo lại khi container đổi kích thước (tránh canvas 0x0 khi dựng lúc layout chưa xong)
+    try {
+      this._ro = new ResizeObserver(() => this.resize());
+      this._ro.observe(this.container);
+    } catch (_) {}
+
+    this._ready = true;
+    this._animate();
+    // ép một nhịp đo lại ở frame kế (một số layout chưa xong ngay khi khởi tạo)
+    requestAnimationFrame(() => this.resize());
+  }
+
+  _buildCage(THREE) {
+    const R = this.R;
+    const mat = new THREE.LineBasicMaterial({
+      color: 0x8ba6e0, transparent: true, opacity: 0.12,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    this._cage = [];
+    for (let m = 0; m < 14; m++) {
+      const pts = [], lon = (m / 14) * Math.PI * 2;
+      for (let i = 0; i <= 64; i++) {
+        const lat = -Math.PI / 2 + (i / 64) * Math.PI;
+        pts.push(new THREE.Vector3(R * Math.cos(lat) * Math.cos(lon), R * Math.sin(lat), R * Math.cos(lat) * Math.sin(lon)));
       }
-    });
-  }
-
-  _clearThinkingSprites() {
-    if (!this._thinkSprites || !this._thinkSprites.length) return;
-    const scene = this.graph && this.graph.scene && this.graph.scene();
-    this._thinkSprites.forEach(({ sp }) => {
-      if (scene) scene.remove(sp);
-      if (sp.material) sp.material.dispose();
-    });
-    this._thinkSprites = [];
-  }
-
-  // Lớp "nebula": quả cầu hạt trắng-xanh trang trí bao quanh các node (giống reel).
-  _buildNebula(THREE) {
-    if (this._nebula || !this.graph) return;
-    const scene = this.graph.scene && this.graph.scene();
-    if (!scene) return;
-    const N = 1600, R = 118;
-    const pos = new Float32Array(N * 3);
-    const col = new Float32Array(N * 3);
-    for (let i = 0; i < N; i++) {
-      // hướng đều trên mặt cầu, bán kính đậm dần về phía vỏ → cầu rỗng-mờ đẹp
-      const u = Math.random() * 2 - 1;
-      const th = Math.random() * Math.PI * 2;
-      const s = Math.sqrt(1 - u * u);
-      const r = R * (0.45 + 0.55 * Math.cbrt(Math.random()));
-      pos[i * 3]     = s * Math.cos(th) * r;
-      pos[i * 3 + 1] = s * Math.sin(th) * r;
-      pos[i * 3 + 2] = u * r;
-      const t = Math.random();
-      col[i * 3]     = 0.70 + 0.30 * t;   // R
-      col[i * 3 + 1] = 0.82 + 0.18 * t;   // G
-      col[i * 3 + 2] = 1.0;               // B → trắng-xanh
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+      this.world.add(ln); this._cage.push(ln);
     }
+    for (let p = 1; p < 9; p++) {
+      const pts = [], lat = -Math.PI / 2 + (p / 9) * Math.PI, r = R * Math.cos(lat), y = R * Math.sin(lat);
+      for (let i = 0; i <= 80; i++) {
+        const a = (i / 80) * Math.PI * 2;
+        pts.push(new THREE.Vector3(r * Math.cos(a), y, r * Math.sin(a)));
+      }
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+      this.world.add(ln); this._cage.push(ln);
+    }
+  }
+
+  _buildRing(THREE) {
+    const R = this.R;
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(R * 0.42, R * 1.06, 128),
+      new THREE.MeshBasicMaterial({ color: 0x9fb4ff, transparent: true, opacity: 0.05, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    this.world.add(ring);
+    const edge = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(
+        Array.from({ length: 129 }, (_, i) => { const a = (i / 128) * Math.PI * 2; return new THREE.Vector3(R * 1.05 * Math.cos(a), 0, R * 1.05 * Math.sin(a)); }),
+      ),
+      new THREE.LineBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
+    this.world.add(edge);
+    const flare = new THREE.Sprite(new THREE.SpriteMaterial({ map: this._glow, color: 0xffc9a3, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+    flare.scale.set(R * 2.9, 13, 1);
+    this.world.add(flare);
+    this._ringParts = [ring, edge, flare];
+  }
+
+  _buildCore(THREE) {
+    this.core = new THREE.Sprite(new THREE.SpriteMaterial({ map: this._glow, color: 0xffd7a8, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+    this.core.scale.set(46, 46, 1);
+    this.world.add(this.core);
+    this.coreSolid = new THREE.Mesh(new THREE.IcosahedronGeometry(6.5, 0), new THREE.MeshBasicMaterial({ color: 0xffe9d2 }));
+    this.world.add(this.coreSolid);
+  }
+
+  _buildPrism(THREE) {
+    this.prism = new THREE.Group();
+    this.prism.visible = false;
+    this.world.add(this.prism);
+    this._shells = [];
+    [[26, 0x46d6ff, 0.1], [19, 0xff9d3d, 0.13], [13, 0xffc9a3, 0.16]].forEach(([s, c, o]) => {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+      const wire = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(s, s, s)), new THREE.LineBasicMaterial({ color: 0xffd7b0, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false }));
+      box.add(wire); this.prism.add(box); this._shells.push(box);
+    });
+    this._prismHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this._glow, color: 0xffb877, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+    this._prismHalo.scale.set(64, 64, 1);
+    this.prism.add(this._prismHalo);
+  }
+
+  _buildBgStars(THREE) {
+    const g = new THREE.BufferGeometry();
+    const sp = new Float32Array(1200 * 3);
+    for (let i = 0; i < 1200; i++) {
+      const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(430 + Math.random() * 900);
+      sp.set([v.x, v.y, v.z], i * 3);
+    }
+    g.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+    this.scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x9ab0d8, size: 1.5, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })));
+  }
+
+  // -------------------------------------------------- ĐẶT DỮ LIỆU LÊN CẦU
+  _setData(data) {
+    const THREE = window.THREE;
+    // dọn node + link cũ
+    this._nodeGroup.clear();
+    if (this._linkObj) { this.world.remove(this._linkObj); this._linkObj.geometry.dispose(); this._linkObj = null; }
+    this.nodes = []; this.nodeById.clear();
+    this.prism.visible = false; this.selected = null;
+
+    const rawNodes = data.nodes || [];
+    const rawEdges = data.edges || [];
+
+    // gom cụm theo THƯ MỤC (folder) -> mỗi cụm 1 vùng trên mặt cầu + 1 màu rực rỡ.
+    // Server trả màu đơn điệu (toàn tím) nên ta tự gán bảng màu mẫu theo thứ tự cụm.
+    const clusterKeys = [];
+    const byCluster = new Map();
+    rawNodes.forEach(n => {
+      const key = n.folder || n.color || "khac";
+      if (!byCluster.has(key)) { byCluster.set(key, []); clusterKeys.push(key); }
+      byCluster.get(key).push(n);
+    });
+    const C = Math.max(1, clusterKeys.length);
+    this._colorMap = new Map();   // folder -> hex màu hiển thị (để realtime dùng lại)
+
+    // đặt vị trí + màu từng node
+    clusterKeys.forEach((key, ci) => {
+      const dcolor = PALETTE[ci % PALETTE.length];
+      this._colorMap.set(key, dcolor);
+      const list = byCluster.get(key).slice().sort((a, b) => (b.links || 0) - (a.links || 0));
+      const hubDir = _fib(THREE, ci * 2 + 1, C * 2, 1).normalize();
+      const t1 = new THREE.Vector3().crossVectors(hubDir, new THREE.Vector3(0, 1, 0.3)).normalize();
+      const t2 = new THREE.Vector3().crossVectors(hubDir, t1).normalize();
+      list.forEach((n, k) => {
+        let pos;
+        if (k === 0) {
+          pos = hubDir.clone().multiplyScalar(this.R * 0.8);
+        } else {
+          const spread = 0.4 + Math.random() * 0.36;
+          const ang = (k / list.length) * Math.PI * 2 + Math.random() * 0.9;
+          pos = hubDir.clone()
+            .add(t1.clone().multiplyScalar(Math.cos(ang) * spread))
+            .add(t2.clone().multiplyScalar(Math.sin(ang) * spread))
+            .normalize()
+            .multiplyScalar(this.R * (0.62 + Math.random() * 0.4));
+        }
+        this._addNodeSprite(THREE, n, pos, k === 0, dcolor, ci);
+      });
+    });
+
+    // lưu danh sách cạnh gốc (dạng id-string) để realtime nối thêm mà không mất cạnh cũ
+    this._allEdges = (rawEdges || []).map(e => ({
+      source: typeof e.source === "object" ? e.source.id : e.source,
+      target: typeof e.target === "object" ? e.target.id : e.target,
+    }));
+    this._rebuildLinks(THREE, this._allEdges);
+    this._rebuildAdj();
+    this._rebuildRel();
+  }
+
+  // Dựng danh sách "nối tới" cho mỗi node (để thẻ chi tiết liệt kê) từ cạnh hiện có.
+  _rebuildRel() {
+    this.nodes.forEach(n => { n.rel = []; });
+    (this._allEdges || []).forEach(e => {
+      const a = this.nodeById.get(typeof e.source === "object" ? e.source.id : e.source);
+      const b = this.nodeById.get(typeof e.target === "object" ? e.target.id : e.target);
+      if (!a || !b || a === b) return;
+      if (!a.rel.includes(b)) a.rel.push(b);
+      if (!b.rel.includes(a)) b.rel.push(a);
+    });
+  }
+
+  _addNodeSprite(THREE, n, pos, isHub, dcolor, ci) {
+    const dc = dcolor != null ? dcolor : 0x9d7aff;
+    const color = new THREE.Color(dc);
+    const mat = new THREE.SpriteMaterial({ map: this._glow, color, transparent: true, opacity: isHub ? 1 : 0.72 + Math.random() * 0.24, blending: THREE.AdditiveBlending, depthWrite: false });
+    const base = isHub ? 20 : 4.5 + Math.min(9, (n.links || 0) * 0.7);
+    const sp = new THREE.Sprite(mat);
+    sp.scale.set(base, base, 1);
+    sp.position.copy(pos);
+    this._nodeGroup.add(sp);
+    const node = { id: n.id, label: n.label, path: n.path, links: n.links || 0, color: n.color, dcolor: dc, ci: ci != null ? ci : -1, pos: pos.clone(), sprite: sp, base, isHub, baseOpacity: mat.opacity, rel: [] };
+    sp.__node = node;
+    this.nodes.push(node);
+    this.nodeById.set(n.id, node);
+    return node;
+  }
+
+  _rebuildLinks(THREE, edges) {
+    if (this._linkObj) { this.world.remove(this._linkObj); this._linkObj.geometry.dispose(); this._linkObj = null; }
+    const segs = [];
+    this._linkCount = 0;
+    (edges || []).forEach(e => {
+      const a = this.nodeById.get(typeof e.source === "object" ? e.source.id : e.source);
+      const b = this.nodeById.get(typeof e.target === "object" ? e.target.id : e.target);
+      if (!a || !b) return;
+      const c = new THREE.Color(a.dcolor != null ? a.dcolor : 0x9d7aff).multiplyScalar(0.5);
+      segs.push([a.pos, b.pos, c]);
+      this._linkCount++;
+    });
+    // tia từ tâm tới các "hub" cụm (điểm sáng lớn) - hình nan hoa như mẫu
+    this.nodes.filter(n => n.isHub).forEach(h => {
+      const c = new THREE.Color(h.dcolor != null ? h.dcolor : 0x9d7aff).multiplyScalar(0.32);
+      segs.push([new THREE.Vector3(0, 0, 0), h.pos, c]);
+    });
+    if (!segs.length) return;
+    const pos = new Float32Array(segs.length * 6);
+    const col = new Float32Array(segs.length * 6);
+    segs.forEach((s, i) => {
+      pos.set([s[0].x, s[0].y, s[0].z, s[1].x, s[1].y, s[1].z], i * 6);
+      col.set([s[2].r, s[2].g, s[2].b, s[2].r, s[2].g, s[2].b], i * 6);
+    });
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    const mat = new THREE.PointsMaterial({
-      size: 3.1, map: pointTexture(THREE), vertexColors: true,
-      blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
-      sizeAttenuation: true, opacity: 1.0,
-    });
-    this._nebula = new THREE.Points(geo, mat);
-    scene.add(this._nebula);
+    this._linkObj = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+    this.world.add(this._linkObj);
   }
 
-  _animate() {
-    const tick = () => {
-      if (this._paused) { this._raf = null; return; }   // pause: dừng hẳn vòng lặp (kể cả khi load() vừa gọi lại)
-      this._raf = requestAnimationFrame(tick);
-      if (!this.graph) return;
-      // Không render khi tab ẩn - tiết kiệm CPU/GPU hoàn toàn
-      if (document.hidden) return;
-      // Sau khi physics settle: giảm còn ~15fps (bỏ qua 3/4 frame)
-      if (this._settled) {
-        this._slowFrame = (this._slowFrame || 0) + 1;
-        if (this._slowFrame % 4 !== 0) return;
+  _rebuildAdj() {
+    const idToIdx = {};
+    this.nodes.forEach((n, i) => { idToIdx[n.id] = i; });
+    this._adj = this.nodes.map(() => []);
+    // adjacency chỉ dùng cho hiệu ứng suy nghĩ; suy từ vị trí link đã dựng là đủ xấp xỉ
+    this._sprites = this.nodes.map(n => n.sprite);
+    this._idToIdx = idToIdx;
+  }
+
+  // -------------------------------------------------- ĐIỀU KHIỂN
+  _bindControls() {
+    const el = this.renderer.domElement;
+    el.addEventListener("pointerdown", e => {
+      this.dragging = true; this._moved = 0; this._px = e.clientX; this._py = e.clientY;
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    el.addEventListener("pointermove", e => {
+      if (this.dragging) {
+        const dx = e.clientX - this._px, dy = e.clientY - this._py;
+        this._moved += Math.abs(dx) + Math.abs(dy);
+        this.tTheta -= dx * 0.0044;
+        this.tPhi = Math.max(0.16, Math.min(Math.PI - 0.16, this.tPhi - dy * 0.0044));
+        this._px = e.clientX; this._py = e.clientY;
+      } else {
+        this._hover(e);
       }
-      const t = this.level || 0;
-      if (t > this._smooth) this._smooth += (t - this._smooth) * 0.5;
-      else this._smooth += (t - this._smooth) * 0.12;
+    });
+    window.addEventListener("pointerup", e => {
+      if (this.dragging && this._moved < 5) this._pick(e);
+      this.dragging = false;
+    });
+    el.addEventListener("wheel", e => {
+      e.preventDefault();
+      this.tRadius = Math.max(60, Math.min(900, this.tRadius * (1 + Math.sign(e.deltaY) * 0.11)));
+    }, { passive: false });
+  }
+
+  _mouseNDC(e) {
+    const r = this.container.getBoundingClientRect();
+    return {
+      x: ((e.clientX - r.left) / r.width) * 2 - 1,
+      y: -((e.clientY - r.top) / r.height) * 2 + 1,
+    };
+  }
+
+  _hover(e) {
+    if (!this._ready || !this.tooltip) return;
+    const m = this._mouseNDC(e);
+    this.ray.setFromCamera(new window.THREE.Vector2(m.x, m.y), this.camera);
+    const hits = this.ray.intersectObjects(this._sprites || []);
+    if (hits.length) {
+      const n = hits[0].object.__node;
+      this.container.style.cursor = "pointer";
+      this.tooltip.style.display = "block";
+      this.tooltip.innerHTML = `<strong>${n.label}</strong><br><span class="tt-path">${n.path || ""}</span><br><span class="tt-links">${n.links} kết nối · click để mở</span>`;
+    } else {
+      this.container.style.cursor = "grab";
+      this.tooltip.style.display = "none";
+    }
+  }
+
+  _pick(e) {
+    if (!this._ready) return;
+    const m = this._mouseNDC(e);
+    this.ray.setFromCamera(new window.THREE.Vector2(m.x, m.y), this.camera);
+    const hits = this.ray.intersectObjects(this._sprites || []);
+    if (hits.length) this._select(hits[0].object.__node);
+    else this._deselect();
+  }
+
+  _select(node) {
+    this.selected = node;
+    this.autoSpin = false;
+    this.tTarget.copy(node.pos);
+    this.tRadius = node.isHub ? 120 : 74;
+    this.prism.position.copy(node.pos);
+    this.prism.visible = true;
+    if (this._shells[0]) this._shells[0].material.color.set(node.dcolor != null ? node.dcolor : 0x9d7aff);
+    if (window.onGraphNodeClick) window.onGraphNodeClick(node);
+  }
+
+  _deselect() {
+    this.selected = null;
+    this.prism.visible = false;
+    this.tTarget.set(0, 0, 0);
+    this.tRadius = 430;
+    this.autoSpin = !this._locked;
+  }
+
+  // -------------------------------------------------- REALTIME
+  addOrUpdate(node, linkTargets, isNew) {
+    if (!this._ready || !node || !node.id) return { created: false };
+    const THREE = window.THREE;
+    let target = this.nodeById.get(node.id);
+    let created = false;
+
+    if (!target) {
+      // mọc cạnh 1 hàng xóm đã có (nếu link tới) -> trông như nảy từ mạng
+      let pos = null;
+      const nb = (linkTargets || []).map(s => this.nodeById.get(s)).find(Boolean);
+      if (nb) {
+        pos = nb.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 18, (Math.random() - 0.5) * 18, (Math.random() - 0.5) * 18));
+      } else {
+        pos = _fib(THREE, this.nodes.length, this.nodes.length + 1, this.R * (0.66 + Math.random() * 0.3));
+      }
+      const dcol = (this._colorMap && this._colorMap.get(node.folder || node.color)) != null
+        ? this._colorMap.get(node.folder || node.color) : 0x43e0a3;
+      target = this._addNodeSprite(THREE, { id: node.id, label: node.label, path: node.path, links: node.links || 0, color: node.color }, pos, false, dcol, nb ? nb.ci : -1);
+      created = true;
+      this._births.set(target.sprite, 36);
+    } else {
+      if (node.color) { target.color = node.color; try { target.sprite.material.color.set(node.color); } catch (_) {} }
+      if (node.path) target.path = node.path;
+      if (node.label) target.label = node.label;
+    }
+
+    // thêm cạnh mới tới các link target đã tồn tại
+    const newEdges = [];
+    (linkTargets || []).forEach(stem => {
+      const tgt = this.nodeById.get(stem);
+      if (!tgt || tgt.id === target.id) return;
+      newEdges.push({ source: target.id, target: tgt.id });
+      target.links++; tgt.links++;
+    });
+    if (newEdges.length) {
+      // gom lại toàn bộ cạnh hiện có + cạnh mới rồi dựng lại (đơn giản, chắc chắn đúng)
+      this._allEdges = (this._allEdges || []).concat(newEdges);
+      this._rebuildLinks(THREE, this._allEdges);
+    } else if (created) {
+      this._allEdges = this._allEdges || [];
+    }
+    this._rebuildAdj();
+    this._rebuildRel();
+    return { created };
+  }
+
+  nodeStats() { return { nodes: this.nodes.length, links: this._linkCount }; }
+
+  // ---- ĐIỀU KHIỂN HIỆU ỨNG (nút trên thanh nav) ----
+  // Bật/tắt lồng cầu + vành xích đạo ("Hành tinh")
+  setPlanet(on) {
+    if (!this._ready) return;
+    (this._cage || []).forEach(l => { l.visible = on; });
+    (this._ringParts || []).forEach(o => { o.visible = on; });
+    this._planetOff = !on;
+  }
+  // Khóa/mở xoay tự động
+  setLock(on) { this._locked = on; this.autoSpin = !on && !this.selected; }
+  // Tiêu điểm 1 cụm: làm mờ các cụm khác (ci = -1 để bỏ tiêu điểm)
+  setFocus(ci) {
+    this._focusCi = (ci == null ? -1 : ci);
+    const active = this._focusCi;
+    this.nodes.forEach(n => {
+      const on = active < 0 || n.ci === active;
+      if (n.sprite && n.sprite.material) n.sprite.material.opacity = on ? (n.baseOpacity || 0.9) : 0.06;
+    });
+    if (this._linkObj) this._linkObj.material.opacity = active < 0 ? 0.8 : 0.14;
+  }
+  // Chiếu 1 node ra toạ độ pixel trong container (để đặt thẻ chi tiết cho khéo)
+  projectNode(node) {
+    if (!this._ready || !node) return null;
+    const v = node.pos.clone().project(this.camera);
+    const r = this.container.getBoundingClientRect();
+    return {
+      x: (v.x * 0.5 + 0.5) * r.width,
+      y: (-v.y * 0.5 + 0.5) * r.height,
+      onScreen: v.z < 1 && Math.abs(v.x) <= 1.2 && Math.abs(v.y) <= 1.2,
+    };
+  }
+  // Bỏ chọn (đóng thẻ chi tiết): tắt prism, về xoay tự do (nếu không khoá)
+  clearSelection() { this._deselect(); if (this._locked) this.autoSpin = false; }
+  // Danh sách cụm (để dựng chú giải / nút tiêu điểm)
+  clusters() {
+    const seen = new Map();
+    this.nodes.forEach(n => { if (!seen.has(n.ci)) seen.set(n.ci, { ci: n.ci, color: n.dcolor, count: 0 }); seen.get(n.ci).count++; });
+    return [...seen.values()].filter(c => c.ci >= 0).sort((a, b) => a.ci - b.ci);
+  }
+  setLevel(l) { this.level = l || 0; }
+
+  setThinking(active) {
+    this._thinking = active;
+    if (!active) this._firing.clear();
+  }
+
+  // -------------------------------------------------- VÒNG LẶP
+  _animate() {
+    const THREE = window.THREE;
+    const tick = () => {
+      if (this._paused) { this._raf = null; return; }
+      this._raf = requestAnimationFrame(tick);
+      if (!this._ready || document.hidden) return;
+      const now = performance.now();
+      const t = now * 0.001;
+
+      // mượt hoá mức âm thanh -> nhịp thở
+      const lv = this.level || 0;
+      if (lv > this._smooth) this._smooth += (lv - this._smooth) * 0.5;
+      else this._smooth += (lv - this._smooth) * 0.12;
       const lvl = this._smooth;
 
-      // Pulse từng sprite: phồng + sáng theo nhịp giọng
-      const pulse = 1 + lvl * 1.6;
-      const op = Math.min(1, 0.85 + lvl * 0.6);
-      for (const sp of this._sprites) {
-        if (!sp) continue;
-        const b = sp.__base;
-        sp.scale.set(b * pulse, b * pulse, 1);
-        if (sp.material) sp.material.opacity = op;
+      // quỹ đạo camera
+      if (this.autoSpin && !this.dragging) this.tTheta += 0.00072;
+      this.theta += (this.tTheta - this.theta) * 0.075;
+      this.phi += (this.tPhi - this.phi) * 0.075;
+      this.radius += (this.tRadius - this.radius) * 0.062;
+      this.target.lerp(this.tTarget, 0.075);
+      this.camera.position.set(
+        this.target.x + this.radius * Math.sin(this.phi) * Math.cos(this.theta),
+        this.target.y + this.radius * Math.cos(this.phi),
+        this.target.z + this.radius * Math.sin(this.phi) * Math.sin(this.theta),
+      );
+      this.camera.lookAt(this.target);
+
+      // nhân trung tâm thở + xoay
+      const b = 1 + Math.sin(t * 1.5) * (0.1 + lvl * 0.4);
+      this.core.scale.set(46 * b, 46 * b, 1);
+      this.coreSolid.rotation.y = t * 0.28;
+      this.coreSolid.rotation.x = t * 0.17;
+
+      // sao nhấp nháy nhẹ + phồng theo giọng nói
+      const pulse = 1 + lvl * 1.1;
+      for (let i = 0; i < this.nodes.length; i++) {
+        const n = this.nodes[i];
+        const tw = 1 + Math.sin(t * 1.9 + i * 0.7) * 0.06;
+        const s = n.base * tw * pulse * (this.selected === n ? 1.7 : 1);
+        n.sprite.scale.set(s, s, 1);
       }
 
-      // --- BIRTH: node vừa sinh ra → loé sáng to rồi co về kích thước thật ---
+      // hiệu ứng nảy sinh (node realtime vừa xuất hiện)
       if (this._births.size) {
         for (const [sp, fr] of this._births) {
           if (!sp) { this._births.delete(sp); continue; }
-          const t = fr / 36;                       // 1 → 0
-          const grow = 1 + t * 3.2;                // bắt đầu to (pop) → settle
-          const b = sp.__base || 5;
-          sp.scale.set(b * grow, b * grow, 1);
-          if (sp.material) sp.material.opacity = Math.min(1, 0.5 + (1 - t) * 0.6 + t * 0.4);
+          const k = fr / 36;
+          const grow = 1 + k * 3.2;
+          const bs = (sp.__node ? sp.__node.base : 5);
+          sp.scale.set(bs * grow, bs * grow, 1);
+          if (sp.material) sp.material.opacity = Math.min(1, 0.5 + (1 - k) * 0.6 + k * 0.4);
           const next = fr - 1;
-          if (next <= 0) this._births.delete(sp);
-          else this._births.set(sp, next);
+          if (next <= 0) this._births.delete(sp); else this._births.set(sp, next);
         }
       }
 
-      // Quay tròn nhẹ liên tục + "thở" phình to/co nhỏ cả khối (giống reel)
-      const scene = this.graph.scene && this.graph.scene();
-      if (scene) {
-        scene.rotation.y += 0.0018 + lvl * 0.012;
-        const amp = 0.13 + lvl * 0.45;                       // thở mạnh hơn khi đang nói
-        const breathe = 1 + Math.sin(performance.now() * 0.00095) * amp;
-        scene.scale.setScalar(breathe);
-      }
-
-      this._frame = (this._frame || 0) + 1;
-
-      // --- THINKING PARTICLES: đốm sáng bay dọc link ---
-      if (this._thinking && this._thinkSprites && this._thinkSprites.length) {
-        for (const p of this._thinkSprites) {
-          p.t = (p.t + p.speed) % 1;
-          const src = p.link.source;
-          const tgt = p.link.target;
-          if (!src || !tgt || src.x == null) continue;
-          p.sp.position.set(
-            src.x + (tgt.x - src.x) * p.t,
-            src.y + (tgt.y - src.y) * p.t,
-            src.z + (tgt.z - src.z) * p.t,
-          );
-          // Fade in từ nguồn, fade out gần đích - trông như bong bóng sáng trôi
-          p.sp.material.opacity = Math.sin(p.t * Math.PI) * 0.85 + 0.1;
+      // hiệu ứng "suy nghĩ": vài sao loé sáng rải rác
+      if (this._thinking && this.nodes.length) {
+        this._frame = (this._frame || 0) + 1;
+        if (this._frame % 20 === 0) {
+          const seeds = Math.max(1, Math.floor(this.nodes.length * 0.02));
+          for (let i = 0; i < seeds; i++) this._firing.set(Math.floor(Math.random() * this.nodes.length), 14);
         }
-      }
-
-      // --- THINKING: nơron kích hoạt + LAN TRUYỀN theo synapse ---
-      if (this._thinking) {
-        const n = this._sprites.length;
-        // Điểm khởi phát: 1-2 node "loé" lên thưa thớt (ý nghĩ mới) - chậm cho đỡ rối
-        if (n > 0 && this._frame % 22 === 0) {
-          const seeds = Math.max(1, Math.floor(n * 0.012));
-          for (let i = 0; i < seeds; i++) {
-            this._firingNodes.set(Math.floor(Math.random() * n), 14);
+        for (const [idx, fr] of this._firing) {
+          const n = this.nodes[idx];
+          if (n) {
+            const k = Math.min(1, fr / 14);
+            const s = n.base * (pulse + k * 2.0);
+            n.sprite.scale.set(s, s, 1);
+            if (n.sprite.material) n.sprite.material.opacity = Math.min(1, 0.6 + k * 0.4);
           }
-        }
-        // Lan truyền chậm: node cháy mạnh kích hoạt hàng xóm → sóng dịu chạy qua mạng
-        if (this._adj && this._frame % 4 === 0) {
-          const toAdd = [];
-          for (const [idx, frames] of this._firingNodes) {
-            if (frames >= 9) {
-              const nb = this._adj[idx];
-              if (nb) for (const j of nb) {
-                if (!this._firingNodes.has(j) && Math.random() < 0.06) toAdd.push(j);
-              }
-            }
-          }
-          for (const j of toAdd) this._firingNodes.set(j, 12);
-        }
-        // Animate firing nodes - sáng lên rồi tắt dần
-        for (const [idx, frames] of this._firingNodes) {
-          const sp = this._sprites[idx];
-          if (sp) {
-            const t = Math.min(1, frames / 14);
-            const s = sp.__base * (pulse + t * 2.0);   // phồng dịu hơn
-            sp.scale.set(s, s, 1);
-            if (sp.material) sp.material.opacity = Math.min(1, 0.6 + t * 0.5);
-          }
-          const next = frames - 1;
-          if (next <= 0) this._firingNodes.delete(idx);
-          else this._firingNodes.set(idx, next);
+          const next = fr - 1;
+          if (next <= 0) this._firing.delete(idx); else this._firing.set(idx, next);
         }
       }
+
+      // prism xoay khi đang chọn 1 node
+      if (this.prism.visible) {
+        this._shells[0].rotation.set(t * 0.2, t * 0.15, 0);
+        this._shells[1].rotation.set(-t * 0.26, t * 0.31, t * 0.11);
+        this._shells[2].rotation.set(t * 0.41, -t * 0.22, -t * 0.17);
+        const hb = 1 + Math.sin(t * 2.4) * 0.14;
+        this._prismHalo.scale.set(64 * hb, 64 * hb, 1);
+      }
+
+      this.renderer.render(this.scene, this.camera);
     };
     tick();
   }
 
+  // -------------------------------------------------- TIỆN ÍCH
   resize() {
-    if (this.graph) {
-      this.graph.width(this.container.clientWidth);
-      this.graph.height(this.container.clientHeight);
-    }
+    if (!this._ready) return;
+    const W = this.container.clientWidth || window.innerWidth;
+    const H = this.container.clientHeight || window.innerHeight;
+    this.camera.aspect = W / H;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(W, H);
   }
 
   stop() { if (this._raf) cancelAnimationFrame(this._raf); this._raf = null; }
-  resume() { if (!this._raf) this._animate(); }
+  resume() { if (!this._raf && this._ready) this._animate(); }
 
-  // Pause SÂU - dùng khi rời cockpit (mở Console): dừng vòng render + engine vật lý +
-  // autorotate → CPU/GPU về ~0, nhưng giữ context để bật lại tức thì. Đảo bằng wake().
   pause() {
     if (this._paused) return;
     this._paused = true;
-    this.stop();                                  // dừng RAF render glow/firing
-    if (this.graph) {
-      try { this.graph.pauseAnimation(); } catch (e) {}   // dừng vòng render của force-graph
-      try { const c = this.graph.controls(); if (c) c.autoRotate = false; } catch (e) {}
-    }
+    this.stop();
   }
   wake() {
     if (!this._paused) return;
     this._paused = false;
-    if (this.graph) {
-      try { this.graph.resumeAnimation(); } catch (e) {}
-      try { const c = this.graph.controls(); if (c) c.autoRotate = true; } catch (e) {}
-      this.resize();                              // khung có thể đã đổi kích thước khi ẩn
-    }
-    this.resume();                                // chạy lại RAF
+    this.resize();
+    this.resume();
   }
   isPaused() { return !!this._paused; }
 }
