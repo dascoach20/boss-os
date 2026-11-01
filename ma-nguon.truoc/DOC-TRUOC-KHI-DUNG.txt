@@ -1,0 +1,18 @@
+BAN TRUOC — moc doi chieu, sinh luc 2026-11-01 14:20
+==============================================================
+
+Thu muc nay giu BAN CU (truoc lan gom vua roi) cua 3 muc DA DOI.
+File khong doi thi KHONG co o day — ban dang nam trong `ma-nguon/` chinh la
+ban cu cua no.
+
+DUNG DE LAM GI: sau khi gom xong muon biet 'lan gom nay doi gi', so
+  ma-nguon.truoc/ma-nguon/<file>   <->   ma-nguon/<file>
+
+CANH BAO: thu muc nay bi XOA SACH va ghi lai o MOI lan gom. No luon chi la
+'ngay truoc lan gom gan nhat', KHONG phai lich su nhieu doi. Can giu lau hon
+thi chep ra cho khac truoc khi gom lai.
+
+CAC MUC DA DOI (3 file ma nguon):
+  [sua] dashboard\index.html
+  [moi] server\nut_gon.py
+  [sua] server\telegram_bot.py

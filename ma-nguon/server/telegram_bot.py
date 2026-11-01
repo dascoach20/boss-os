@@ -18,6 +18,8 @@ from pathlib import Path
 
 import httpx
 
+import nut_gon   # 01/11/2026: hàng nút quá chật thì tự chia cho vừa điện thoại
+
 
 def parse_chat_ids(raw):
     """Chuẩn hoá whitelist chat_id: nhận chuỗi 'id1, id2 id3' (phẩy/chấm phẩy/khoảng trắng)
@@ -105,6 +107,13 @@ def md_to_mdv2(text: str) -> str:
     return t
 
 
+
+def _gon_nut(rm):
+    """Chia lại hàng nút cho vừa màn hình điện thoại (Telegram cắt chữ chứ không xuống dòng)."""
+    if isinstance(rm, dict) and isinstance(rm.get("inline_keyboard"), list):
+        return {**rm, "inline_keyboard": nut_gon.xep_hang(rm["inline_keyboard"])}
+    return rm
+
 class TelegramBot:
     def __init__(self, token, chat_id, answer_fn, command_fn=None, callback_fn=None,
                  download_dir=None):
@@ -134,7 +143,7 @@ class TelegramBot:
         for idx, chunk in enumerate(chunks):
             base = {"chat_id": chat, "text": chunk}
             if reply_markup is not None and idx == len(chunks) - 1:
-                base["reply_markup"] = reply_markup   # nút chỉ gắn vào tin cuối
+                base["reply_markup"] = _gon_nut(reply_markup)   # nút chỉ gắn vào tin cuối
             # MDV2 trước, hỏng escape (400 can't parse entities) → gửi lại plain
             for use_md in (True, False):
                 payload = dict(base)
@@ -438,7 +447,7 @@ class TelegramBot:
         payload = {"chat_id": chat, "message_id": mid, "text": res["text"]}
         rm = res.get("reply_markup")
         if rm is not None:
-            payload["reply_markup"] = rm   # bỏ trống → gỡ bàn phím nút (khi chọn xong/đóng)
+            payload["reply_markup"] = _gon_nut(rm)   # bỏ trống → gỡ bàn phím nút (khi chọn xong/đóng)
         try:
             await client.post(self._url("editMessageText"), json=payload)
         except Exception as e:

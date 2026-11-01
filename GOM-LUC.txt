@@ -1,5 +1,6 @@
-Gom luc: 2026-07-20 14:33
+Gom luc: 2026-11-01 14:20
 Tu     : C:\Users\Minh Khoi\boss-os
-So file: 133  (2.24 MB)
+So file: 125  (2.22 MB)
+Doi    : 3 file so voi lan gom truoc
 
 KHO NAY KHONG CHUA CHIA KHOA — xem README.md cua du an.
